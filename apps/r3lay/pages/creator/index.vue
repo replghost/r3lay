@@ -79,21 +79,30 @@
         </CardHeader>
         <CardContent>
           <div class="grid gap-4 md:grid-cols-2">
-            <NuxtLink to="/creator/post/new">
+            <NuxtLink 
+              to="/creator/post/new"
+              :class="{ 'pointer-events-none': !canPublish }"
+            >
               <Button class="w-full" :disabled="!canPublish">
                 <Icon name="lucide:plus" class="mr-2" />
                 New Post
               </Button>
             </NuxtLink>
 
-            <NuxtLink to="/creator/subscribers">
+            <NuxtLink 
+              to="/creator/subscribers"
+              :class="{ 'pointer-events-none': !hasChannel }"
+            >
               <Button variant="outline" class="w-full" :disabled="!hasChannel">
                 <Icon name="lucide:user-check" class="mr-2" />
                 Manage Subscribers
               </Button>
             </NuxtLink>
 
-            <NuxtLink to="/creator/posts">
+            <NuxtLink 
+              to="/creator/posts"
+              :class="{ 'pointer-events-none': !hasChannel }"
+            >
               <Button variant="outline" class="w-full" :disabled="!hasChannel">
                 <Icon name="lucide:file-text" class="mr-2" />
                 View Posts
@@ -130,7 +139,13 @@
 <script setup lang="ts">
 const { hasCreatorIdentity, initializeCreator, getCreatorPublicKey } = useR3layCore()
 const { isConnected, walletAddress, connectWallet, getChannel, getFollowerCount } = useR3layChain()
-const { deriveChannelIdFromAddress } = await import('../../packages/r3lay-core/src/utils/index.ts')
+
+// Derive channel ID from wallet address (pad to 32 bytes)
+const deriveChannelIdFromAddress = (address: string): string => {
+  const cleanAddress = address.toLowerCase().replace(/^0x/, '')
+  const padded = cleanAddress.padStart(64, '0')
+  return `0x${padded}`
+}
 
 // Local state
 const loading = ref(true)

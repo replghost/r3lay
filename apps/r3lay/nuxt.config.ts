@@ -31,6 +31,9 @@ export default defineNuxtConfig({
 
   alias: {
     '@r3lay/core': '../../packages/r3lay-core/src/index.ts',
+    '@r3lay/core/utils': '../../packages/r3lay-core/src/utils/index.ts',
+    '@r3lay/core/crypto': '../../packages/r3lay-core/src/crypto/index.ts',
+    '@r3lay/core/types': '../../packages/r3lay-core/src/types/index.ts',
     '@r3lay/ipfs': '../../packages/r3lay-ipfs/src/index.ts',
     '@r3lay/chain': '../../packages/r3lay-chain/src/index.ts',
   },

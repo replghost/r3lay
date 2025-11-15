@@ -195,8 +195,9 @@
 </template>
 
 <script setup lang="ts">
-const { getCreatorPublicKey } = useR3layCore()
-const { downloadEncryptedPost } = useR3layIPFS()
+const { creatorIdentity, getCreatorPublicKey } = useR3layCore()
+const { downloadEncryptedPost, downloadFeedIndex } = useR3layIPFS()
+const { getChannel, getFollowerCount, isConnected, walletAddress } = useR3layChain()
 
 interface Post {
   cid: string
@@ -215,6 +216,13 @@ interface PostContent {
   }>
 }
 
+// Derive channel ID from wallet address (pad to 32 bytes)
+const deriveChannelIdFromAddress = (address: string): string => {
+  const cleanAddress = address.toLowerCase().replace(/^0x/, '')
+  const padded = cleanAddress.padStart(64, '0')
+  return `0x${padded}`
+}
+
 // State
 const posts = ref<Post[]>([])
 const loading = ref(false)
@@ -223,23 +231,54 @@ const selectedPost = ref<string | null>(null)
 const postContent = ref<PostContent | null>(null)
 const error = ref('')
 const followerCount = ref(0)
+const channelId = ref<string | null>(null)
 
-// Load posts
-const loadPosts = () => {
+// Load posts from blockchain + IPFS
+const loadPosts = async () => {
+  if (!isConnected.value || !walletAddress.value) {
+    console.log('Wallet not connected')
+    return
+  }
+
   loading.value = true
+  error.value = ''
+  
   try {
-    const stored = localStorage.getItem('r3lay-posts')
-    if (stored) {
-      posts.value = JSON.parse(stored)
+    // Derive channel ID
+    const derivedChannelId = deriveChannelIdFromAddress(walletAddress.value)
+    channelId.value = derivedChannelId
+    
+    // Get channel from blockchain
+    const channel = await getChannel(derivedChannelId)
+    
+    if (!channel.currentIndexCid) {
+      console.log('No feed index yet')
+      posts.value = []
+      loading.value = false
+      return
     }
     
+    // Download feed index from IPFS
+    const feedIndex = await downloadFeedIndex(channel.currentIndexCid)
+    
+    // Convert feed index to posts array (CIDs only, no metadata yet)
+    // Posts are already newest first in the feed index
+    posts.value = feedIndex.posts.map((cid: string) => ({
+      cid,
+      title: 'Loading...', // Will be loaded when post is opened
+      timestamp: Date.now(), // Placeholder
+      preview: ''
+    }))
+    
     // Load follower count
-    const followers = localStorage.getItem('r3lay-followers')
-    if (followers) {
-      followerCount.value = JSON.parse(followers).length
-    }
-  } catch (e) {
+    const count = await getFollowerCount(derivedChannelId)
+    followerCount.value = count
+    
+    console.log(`Loaded ${posts.value.length} posts from blockchain`)
+  } catch (e: any) {
     console.error('Failed to load posts:', e)
+    error.value = e.message || 'Failed to load posts'
+    posts.value = []
   } finally {
     loading.value = false
   }
@@ -249,7 +288,7 @@ const loadPosts = () => {
 const lastPublished = computed(() => {
   if (posts.value.length === 0) return 'Never'
   const latest = posts.value[0]
-  return formatDate(latest.timestamp)
+  return latest ? formatDate(latest.timestamp) : 'Never'
 })
 
 // Toggle post view
@@ -268,18 +307,21 @@ const togglePost = async (cid: string) => {
     const bundle = await downloadEncryptedPost(cid)
     
     // Decrypt bundle (creator can read their own posts)
-    const { decryptPostBundle } = await import('../../../packages/r3lay-core/src/bundler/index.ts')
-    const { creatorIdentity } = useR3layCore()
-    
     if (!creatorIdentity.value) {
       throw new Error('Creator identity not found')
     }
     
     const creatorPubkey = await getCreatorPublicKey()
+    if (!creatorPubkey) {
+      throw new Error('Creator public key not found')
+    }
+    
+    // Use the bundler from r3lay-core package
+    const { decryptPostBundle } = await import('@r3lay/core')
     const decrypted = await decryptPostBundle(
       bundle,
       creatorIdentity.value.encryptionKeyPair.privateKey,
-      creatorPubkey!
+      creatorPubkey
     )
     
     postContent.value = decrypted
@@ -329,6 +371,13 @@ const copyToClipboard = async (text: string) => {
     console.error('Failed to copy:', e)
   }
 }
+
+// Watch for wallet connection
+watch([isConnected, walletAddress], () => {
+  if (isConnected.value && walletAddress.value) {
+    loadPosts()
+  }
+}, { immediate: true })
 
 // Load on mount
 onMounted(() => {

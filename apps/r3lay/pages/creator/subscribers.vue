@@ -177,7 +177,13 @@
 
 <script setup lang="ts">
 const { getChannel, getPendingRequests, getApprovedFollowers, processSubscription, revokeSubscription, isConnected, walletAddress } = useR3layChain()
-const { deriveChannelIdFromAddress } = await import('../../packages/r3lay-core/src/utils/index.ts')
+
+// Derive channel ID from wallet address (pad to 32 bytes)
+const deriveChannelIdFromAddress = (address: string): string => {
+  const cleanAddress = address.toLowerCase().replace(/^0x/, '')
+  const padded = cleanAddress.padStart(64, '0')
+  return `0x${padded}`
+}
 
 // State
 const loading = ref(true)
