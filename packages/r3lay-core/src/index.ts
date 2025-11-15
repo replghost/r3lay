@@ -12,3 +12,7 @@ export * from './utils'
 
 // Export constants
 export * from './constants'
+
+// Export crypto functions
+export * from './crypto'
+export * from './crypto/storage'
