@@ -1,4 +1,4 @@
-export const R3LAYChannelRegistryABI = [
+[
   {
     "type": "function",
     "name": "approvedFollowers",
@@ -846,4 +846,4 @@ export const R3LAYChannelRegistryABI = [
       }
     ]
   }
-] as const
+]

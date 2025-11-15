@@ -405,6 +405,200 @@ export class R3LAYChainClient {
       throw new ChainError('Failed to estimate gas', error)
     }
   }
+
+  // ============================================================================
+  // Subscription Management
+  // ============================================================================
+
+  /**
+   * Request to subscribe to a channel
+   */
+  async requestSubscription(
+    channelId: ChannelId,
+    followerPublicKey: string
+  ): Promise<TransactionResult> {
+    const wallet = this.ensureWallet()
+    
+    try {
+      const [account] = await wallet.getAddresses()
+      
+      const hash = await wallet.writeContract({
+        address: this.config.contractAddress,
+        abi: R3LAYChannelRegistryABI,
+        functionName: 'requestSubscription',
+        args: [channelId as Hex, followerPublicKey],
+        account,
+      })
+      
+      const receipt = await this.publicClient.waitForTransactionReceipt({ hash })
+      
+      return {
+        hash,
+        blockNumber: receipt.blockNumber,
+      }
+    } catch (error: any) {
+      throw new ChainError(`Failed to request subscription: ${channelId}`, error)
+    }
+  }
+
+  /**
+   * Approve or reject a subscription request (creator only)
+   */
+  async processSubscription(
+    channelId: ChannelId,
+    follower: Address,
+    approved: boolean
+  ): Promise<TransactionResult> {
+    const wallet = this.ensureWallet()
+    
+    try {
+      const [account] = await wallet.getAddresses()
+      
+      const hash = await wallet.writeContract({
+        address: this.config.contractAddress,
+        abi: R3LAYChannelRegistryABI,
+        functionName: 'processSubscription',
+        args: [channelId as Hex, follower, approved],
+        account,
+      })
+      
+      const receipt = await this.publicClient.waitForTransactionReceipt({ hash })
+      
+      return {
+        hash,
+        blockNumber: receipt.blockNumber,
+      }
+    } catch (error: any) {
+      throw new ChainError(`Failed to process subscription`, error)
+    }
+  }
+
+  /**
+   * Revoke a follower's subscription (creator only)
+   */
+  async revokeSubscription(
+    channelId: ChannelId,
+    follower: Address
+  ): Promise<TransactionResult> {
+    const wallet = this.ensureWallet()
+    
+    try {
+      const [account] = await wallet.getAddresses()
+      
+      const hash = await wallet.writeContract({
+        address: this.config.contractAddress,
+        abi: R3LAYChannelRegistryABI,
+        functionName: 'revokeSubscription',
+        args: [channelId as Hex, follower],
+        account,
+      })
+      
+      const receipt = await this.publicClient.waitForTransactionReceipt({ hash })
+      
+      return {
+        hash,
+        blockNumber: receipt.blockNumber,
+      }
+    } catch (error: any) {
+      throw new ChainError(`Failed to revoke subscription`, error)
+    }
+  }
+
+  /**
+   * Get pending subscription requests for a channel
+   */
+  async getPendingRequests(channelId: ChannelId): Promise<any[]> {
+    try {
+      return await this.publicClient.readContract({
+        address: this.config.contractAddress,
+        abi: R3LAYChannelRegistryABI,
+        functionName: 'getPendingRequests',
+        args: [channelId as Hex],
+      }) as any[]
+    } catch (error: any) {
+      throw new ChainError(`Failed to get pending requests: ${channelId}`, error)
+    }
+  }
+
+  /**
+   * Get approved followers with their public keys
+   */
+  async getApprovedFollowers(channelId: ChannelId): Promise<{ followers: Address[], publicKeys: string[] }> {
+    try {
+      const result = await this.publicClient.readContract({
+        address: this.config.contractAddress,
+        abi: R3LAYChannelRegistryABI,
+        functionName: 'getApprovedFollowers',
+        args: [channelId as Hex],
+      }) as [Address[], string[]]
+      
+      return {
+        followers: result[0],
+        publicKeys: result[1],
+      }
+    } catch (error: any) {
+      throw new ChainError(`Failed to get approved followers: ${channelId}`, error)
+    }
+  }
+
+  /**
+   * Check if a follower is approved
+   */
+  async isApproved(channelId: ChannelId, follower: Address): Promise<boolean> {
+    try {
+      return await this.publicClient.readContract({
+        address: this.config.contractAddress,
+        abi: R3LAYChannelRegistryABI,
+        functionName: 'isApproved',
+        args: [channelId as Hex, follower],
+      }) as boolean
+    } catch (error: any) {
+      throw new ChainError(`Failed to check approval status`, error)
+    }
+  }
+
+  /**
+   * Get subscription status for a follower
+   */
+  async getSubscriptionStatus(
+    channelId: ChannelId,
+    follower: Address
+  ): Promise<{ requested: boolean, processed: boolean, approved: boolean }> {
+    try {
+      const result = await this.publicClient.readContract({
+        address: this.config.contractAddress,
+        abi: R3LAYChannelRegistryABI,
+        functionName: 'getSubscriptionStatus',
+        args: [channelId as Hex, follower],
+      }) as [boolean, boolean, boolean]
+      
+      return {
+        requested: result[0],
+        processed: result[1],
+        approved: result[2],
+      }
+    } catch (error: any) {
+      throw new ChainError(`Failed to get subscription status`, error)
+    }
+  }
+
+  /**
+   * Get follower count for a channel
+   */
+  async getFollowerCount(channelId: ChannelId): Promise<number> {
+    try {
+      const count = await this.publicClient.readContract({
+        address: this.config.contractAddress,
+        abi: R3LAYChannelRegistryABI,
+        functionName: 'followerCount',
+        args: [channelId as Hex],
+      }) as bigint
+      
+      return Number(count)
+    } catch (error: any) {
+      throw new ChainError(`Failed to get follower count: ${channelId}`, error)
+    }
+  }
 }
 
 // ============================================================================
