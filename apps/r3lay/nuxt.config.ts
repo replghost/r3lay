@@ -46,7 +46,9 @@ export default defineNuxtConfig({
       rpcUrl: process.env.RPC_URL || 'https://paseo-asset-hub-rpc.polkadot.io',
       chainId: process.env.CHAIN_ID || '1000',
       contractAddress: process.env.CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000',
-      ipfsApiUrl: process.env.IPFS_API_URL || 'https://ipfs.infura.io:5001',
+      // Use a local IPFS node or public endpoint
+      // For production, you'll need to set up your own IPFS node or use a service with API keys
+      ipfsApiUrl: process.env.IPFS_API_URL || 'http://localhost:5001',
       ipfsGatewayUrl: process.env.IPFS_GATEWAY_URL || 'https://ipfs.io',
     }
   }

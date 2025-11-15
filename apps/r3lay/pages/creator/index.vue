@@ -69,7 +69,8 @@
                 {{ followerCount }} followers
               </p>
             </div>
-            <div v-else>
+            <div v-else class="space-y-2">
+              <p class="text-xs text-muted-foreground">No channel yet</p>
               <NuxtLink to="/creator/channel/create">
                 <Button size="sm">
                   Create Channel
@@ -169,9 +170,13 @@ const truncatedAddress = computed(() => {
 // Actions
 const initCreator = async () => {
   try {
+    console.log('Starting creator initialization...')
     await initializeCreator()
-  } catch (error) {
+    console.log('Creator initialized successfully')
+  } catch (error: any) {
     console.error('Failed to initialize creator:', error)
+    console.error('Error details:', error.message, error.stack)
+    alert(`Failed to initialize creator: ${error.message || error}`)
   }
 }
 

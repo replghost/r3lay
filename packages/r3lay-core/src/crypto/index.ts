@@ -28,7 +28,8 @@ async function getSodium() {
     // Dynamic import for browser/node compatibility
     const sodiumModule = await import('libsodium-wrappers')
     await sodiumModule.ready
-    sodium = sodiumModule
+    // Use default export if available, otherwise use the module itself
+    sodium = sodiumModule.default || sodiumModule
     return sodium
   } catch (error) {
     throw new CryptoError('Failed to load libsodium', error)
@@ -39,19 +40,29 @@ async function getSodium() {
 // Key Generation
 // ============================================================================
 
+// ============================================================================
+// Key Generation
+// ============================================================================
+
 /**
  * Generates a new X25519 encryption keypair
  */
 export async function generateX25519KeyPair(): Promise<X25519KeyPair> {
-  const sodium = await getSodium()
-  
   try {
+    console.log('Getting sodium...')
+    const sodium = await getSodium()
+    console.log('Sodium loaded:', !!sodium, typeof sodium)
+    console.log('crypto_box_keypair available:', typeof sodium.crypto_box_keypair)
+    
     const keyPair = sodium.crypto_box_keypair()
+    console.log('KeyPair generated:', !!keyPair)
+    
     return {
       publicKey: keyPair.publicKey,
       privateKey: keyPair.privateKey,
     }
   } catch (error) {
+    console.error('X25519 generation error:', error)
     throw new CryptoError('Failed to generate X25519 keypair', error)
   }
 }
