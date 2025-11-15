@@ -235,6 +235,14 @@ const connectWallet = async () => {
   error.value = ''
   
   try {
+    // First, try to add/switch to Paseo Asset Hub network
+    try {
+      const { addPaseoAssetHub } = await import('~/utils/addPaseoNetwork')
+      await addPaseoAssetHub()
+    } catch (networkError) {
+      console.warn('Could not add network, continuing anyway:', networkError)
+    }
+    
     await connectWalletFn()
   } catch (e: any) {
     error.value = e.message || 'Failed to connect wallet'
@@ -248,11 +256,14 @@ const createChannel = async () => {
   error.value = ''
   
   try {
+    console.log('Step 1: Deriving channel ID...')
     // 1. Derive channel ID from wallet address
     const { deriveChannelIdFromAddress } = await import('../../../packages/r3lay-core/src/utils/index.ts')
     const derivedChannelId = deriveChannelIdFromAddress(walletAddress.value!)
     channelId.value = derivedChannelId
+    console.log('Channel ID:', derivedChannelId)
     
+    console.log('Step 2: Creating feed index...')
     // 2. Create empty feed index
     const feedIndex = {
       version: 1 as const,
@@ -262,23 +273,33 @@ const createChannel = async () => {
       updatedAt: Date.now(),
     }
     
+    console.log('Step 3: Uploading to IPFS...')
     // 3. Upload to IPFS
     const indexCid = await uploadFeedIndex(feedIndex)
+    console.log('Index CID:', indexCid)
     
+    console.log('Step 4: Creating metadata...')
     // 4. Create metadata
     const metadata = JSON.stringify({
       name: channelName.value,
       description: channelDescription.value,
     })
     
+    console.log('Step 5: Creating channel on-chain...')
+    console.log('Wallet:', walletAddress.value)
+    console.log('Contract:', useRuntimeConfig().public.contractAddress)
+    console.log('RPC:', useRuntimeConfig().public.rpcUrl)
+    
     // 5. Create channel on-chain
     const result = await createChannelFn(derivedChannelId, indexCid, metadata)
     txHash.value = result.hash
+    console.log('Transaction hash:', txHash.value)
     
     channelCreated.value = true
   } catch (e: any) {
     error.value = e.message || 'Failed to create channel'
     console.error('Channel creation error:', e)
+    console.error('Error stack:', e.stack)
   } finally {
     loading.value = false
   }

@@ -9,6 +9,7 @@ import {
   createWalletClient,
   custom,
   http,
+  defineChain,
   type PublicClient,
   type WalletClient,
   type Address,
@@ -62,29 +63,48 @@ export class R3LAYChainClient {
   }
   
   /**
-   * Connects a wallet for write operations
+   * Connects to user's wallet (MetaMask, etc.)
    */
   async connectWallet(): Promise<Address> {
+    if (typeof window === 'undefined' || !window.ethereum) {
+      throw new ChainError('No Ethereum wallet found')
+    }
+    
     try {
-      // Check if window.ethereum exists (MetaMask, etc.)
-      if (typeof window === 'undefined' || !window.ethereum) {
-        throw new ChainError('No wallet provider found')
-      }
-      
-      // Create wallet client
-      this.walletClient = createWalletClient({
-        transport: custom(window.ethereum),
-        chain: this.config.chain,
+      // Request account access
+      const accounts = await window.ethereum.request({ 
+        method: 'eth_requestAccounts' 
       })
       
-      // Request accounts
-      const [address] = await this.walletClient.requestAddresses()
+      // Define Paseo Asset Hub chain
+      const paseoAssetHub = defineChain({
+        id: this.config.chainId,
+        name: 'Paseo Asset Hub',
+        nativeCurrency: {
+          decimals: 18,
+          name: 'PAS',
+          symbol: 'PAS',
+        },
+        rpcUrls: {
+          default: {
+            http: [this.config.rpcUrl],
+          },
+        },
+        blockExplorers: {
+          default: {
+            name: 'BlockScout',
+            url: 'https://blockscout-passet-hub.parity-testnet.parity.io',
+          },
+        },
+      })
       
-      if (!address) {
-        throw new ChainError('No account selected')
-      }
+      // Create wallet client with chain
+      this.walletClient = createWalletClient({
+        chain: paseoAssetHub,
+        transport: custom(window.ethereum),
+      })
       
-      return address
+      return accounts[0] as Address
     } catch (error) {
       throw new ChainError('Failed to connect wallet', error)
     }
@@ -203,7 +223,13 @@ export class R3LAYChainClient {
     const wallet = this.ensureWallet()
     
     try {
+      console.log('Getting wallet account...')
       const [account] = await wallet.getAddresses()
+      console.log('Account:', account)
+      
+      console.log('Sending transaction...')
+      console.log('Contract:', this.config.contractAddress)
+      console.log('Args:', { channelId, indexCid, meta })
       
       const hash = await wallet.writeContract({
         address: this.config.contractAddress,
@@ -213,15 +239,22 @@ export class R3LAYChainClient {
         account,
       })
       
+      console.log('Transaction sent:', hash)
+      
       // Wait for transaction receipt
+      console.log('Waiting for confirmation...')
       const receipt = await this.publicClient.waitForTransactionReceipt({ hash })
+      console.log('Transaction confirmed!')
       
       return {
         hash,
         blockNumber: receipt.blockNumber,
       }
-    } catch (error) {
-      throw new ChainError('Failed to create channel', error)
+    } catch (error: any) {
+      console.error('Create channel error details:', error)
+      console.error('Error message:', error.message)
+      console.error('Error cause:', error.cause)
+      throw new ChainError(`Failed to create channel: ${error.message}`, error)
     }
   }
   
