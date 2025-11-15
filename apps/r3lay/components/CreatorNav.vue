@@ -31,6 +31,13 @@
               Followers
             </Button>
           </NuxtLink>
+          
+          <NuxtLink to="/creator/subscribers">
+            <Button variant="ghost" size="sm">
+              <Icon name="lucide:user-check" class="mr-2 h-4 w-4" />
+              Subscribers
+            </Button>
+          </NuxtLink>
 
           <div class="h-6 w-px bg-border mx-2"></div>
 

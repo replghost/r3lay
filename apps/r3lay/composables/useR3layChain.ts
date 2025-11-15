@@ -81,5 +81,46 @@ export const useR3layChain = () => {
     updateChannel,
     getChannel,
     publishPost,
+    
+    // Subscription methods
+    requestSubscription: async (channelId: string, followerPublicKey: string) => {
+      const client = await initializeClient()
+      return await client.requestSubscription(channelId, followerPublicKey)
+    },
+    
+    processSubscription: async (channelId: string, follower: Address, approved: boolean) => {
+      const client = await initializeClient()
+      return await client.processSubscription(channelId, follower, approved)
+    },
+    
+    revokeSubscription: async (channelId: string, follower: Address) => {
+      const client = await initializeClient()
+      return await client.revokeSubscription(channelId, follower)
+    },
+    
+    getPendingRequests: async (channelId: string) => {
+      const client = await initializeClient()
+      return await client.getPendingRequests(channelId)
+    },
+    
+    getApprovedFollowers: async (channelId: string) => {
+      const client = await initializeClient()
+      return await client.getApprovedFollowers(channelId)
+    },
+    
+    isApproved: async (channelId: string, follower: Address) => {
+      const client = await initializeClient()
+      return await client.isApproved(channelId, follower)
+    },
+    
+    getSubscriptionStatus: async (channelId: string, follower: Address) => {
+      const client = await initializeClient()
+      return await client.getSubscriptionStatus(channelId, follower)
+    },
+    
+    getFollowerCount: async (channelId: string) => {
+      const client = await initializeClient()
+      return await client.getFollowerCount(channelId)
+    },
   }
 }

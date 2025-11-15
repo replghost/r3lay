@@ -97,22 +97,45 @@
 
               <div class="flex gap-2">
                 <Button 
-                  v-if="!isSubscribed(channel.channelId)"
+                  v-if="getSubscriptionStatus(channel.channelId) === 'none'"
                   variant="default" 
                   size="sm"
-                  @click="subscribeToChannel(channel.channelId)"
+                  @click="requestSubscription(channel.channelId)"
+                  :disabled="subscribing === channel.channelId"
                 >
-                  <Icon name="lucide:plus" class="mr-2 h-4 w-4" />
-                  Subscribe
+                  <Icon 
+                    :name="subscribing === channel.channelId ? 'lucide:loader-2' : 'lucide:plus'" 
+                    class="mr-2 h-4 w-4"
+                    :class="{ 'animate-spin': subscribing === channel.channelId }"
+                  />
+                  Request Access
                 </Button>
                 <Button 
-                  v-else
+                  v-else-if="getSubscriptionStatus(channel.channelId) === 'pending'"
+                  variant="outline" 
+                  size="sm"
+                  disabled
+                >
+                  <Icon name="lucide:clock" class="mr-2 h-4 w-4" />
+                  Pending Approval
+                </Button>
+                <Button 
+                  v-else-if="getSubscriptionStatus(channel.channelId) === 'approved'"
                   variant="outline" 
                   size="sm"
                   disabled
                 >
                   <Icon name="lucide:check" class="mr-2 h-4 w-4" />
                   Subscribed
+                </Button>
+                <Button 
+                  v-else
+                  variant="destructive" 
+                  size="sm"
+                  disabled
+                >
+                  <Icon name="lucide:x" class="mr-2 h-4 w-4" />
+                  Rejected
                 </Button>
                 <NuxtLink :to="`/follower/channel/${channel.channelId}`">
                   <Button variant="outline" size="sm">
@@ -203,14 +226,87 @@
 
 <script setup lang="ts">
 const { isIndexing, indexProgress, channels: indexedChannels, scanChannelEvents, loadIndexedChannels, cancelScan } = useChannelIndexer()
+const { requestSubscription: requestSubscriptionFn, getSubscriptionStatus: getSubscriptionStatusFn, isConnected, walletAddress } = useR3layChain()
+const { followerIdentity, getFollowerPublicKey } = useR3layCore()
 
 // State
 const loading = ref(true)
 const error = ref('')
 const channels = computed(() => indexedChannels.value)
+const subscribing = ref<string | null>(null)
+const subscriptionStatuses = ref<Record<string, { requested: boolean, processed: boolean, approved: boolean }>>({})
+
+// Load subscription statuses for all channels
+const loadSubscriptionStatuses = async () => {
+  if (!isConnected.value || !walletAddress.value) return
+  
+  for (const channel of indexedChannels.value) {
+    try {
+      const status = await getSubscriptionStatusFn(channel.channelId, walletAddress.value)
+      subscriptionStatuses.value[channel.channelId] = status
+    } catch (e) {
+      console.error(`Failed to load status for ${channel.channelId}:`, e)
+    }
+  }
+}
+
+// Get subscription status for a channel
+const getSubscriptionStatus = (channelId: string): 'none' | 'pending' | 'approved' | 'rejected' => {
+  const status = subscriptionStatuses.value[channelId]
+  if (!status || !status.requested) return 'none'
+  if (!status.processed) return 'pending'
+  if (status.approved) return 'approved'
+  return 'rejected'
+}
+
+// Request subscription to a channel
+const requestSubscription = async (channelId: string) => {
+  if (!isConnected.value) {
+    alert('Please connect your wallet first')
+    return
+  }
+  
+  if (!followerIdentity.value) {
+    alert('Please initialize your follower identity first')
+    navigateTo('/follower')
+    return
+  }
+  
+  subscribing.value = channelId
+  
+  try {
+    // Get follower's public key
+    const publicKey = await getFollowerPublicKey()
+    if (!publicKey) {
+      throw new Error('Failed to get follower public key')
+    }
+    
+    // Convert public key to base64
+    const publicKeyArray = Array.from(publicKey)
+    const publicKeyBase64 = btoa(String.fromCharCode(...publicKeyArray))
+    
+    // Request subscription on-chain
+    await requestSubscriptionFn(channelId, publicKeyBase64)
+    
+    // Update status
+    subscriptionStatuses.value[channelId] = {
+      requested: true,
+      processed: false,
+      approved: false,
+    }
+    
+    alert('Subscription request sent! Waiting for creator approval.')
+  } catch (e: any) {
+    console.error('Failed to request subscription:', e)
+    alert(`Failed to request subscription: ${e.message}`)
+  } finally {
+    subscribing.value = null
+  }
+}
+
+// Legacy local storage functions (kept for backward compatibility)
 const subscribedChannels = ref<string[]>([])
 
-// Load subscribed channels
 const loadSubscribedChannels = () => {
   try {
     const stored = localStorage.getItem('r3lay-subscribed-channels')
@@ -223,26 +319,21 @@ const loadSubscribedChannels = () => {
   }
 }
 
-// Check if subscribed
 const isSubscribed = (channelId: string) => {
   return subscribedChannels.value.includes(channelId)
 }
 
-// Subscribe to channel
 const subscribeToChannel = async (channelId: string) => {
   if (subscribedChannels.value.includes(channelId)) {
     return
   }
   
   try {
-    // Load existing channels
     const stored = localStorage.getItem('r3lay-subscribed-channels')
     const channels = stored ? JSON.parse(stored) : []
     
-    // Get channel metadata
     const channelData = indexedChannels.value.find(c => c.channelId === channelId)
     
-    // Add new channel
     channels.push({
       channelId,
       name: channelData?.meta || 'Unnamed Channel',
@@ -286,6 +377,7 @@ onMounted(async () => {
   try {
     loadSubscribedChannels()
     await loadIndexedChannels()
+    await loadSubscriptionStatuses()
     
     // If no channels indexed yet, scan blockchain
     if (channels.value.length === 0) {

@@ -12,7 +12,7 @@
         </div>
 
       <!-- Status Cards -->
-      <div class="grid gap-4 md:grid-cols-3">
+      <div class="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Identity</CardTitle>
@@ -37,39 +37,28 @@
 
         <Card>
           <CardHeader>
-            <CardTitle>Wallet</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div v-if="isConnected" class="space-y-2">
-              <div class="flex items-center gap-2">
-                <div class="h-2 w-2 rounded-full bg-green-500" />
-                <span class="text-sm">Connected</span>
-              </div>
-              <p class="text-xs text-muted-foreground font-mono">
-                {{ truncatedAddress }}
-              </p>
-            </div>
-            <div v-else>
-              <Button @click="connect" size="sm">
-                Connect Wallet
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
             <CardTitle>Channel</CardTitle>
           </CardHeader>
           <CardContent>
-            <div v-if="hasChannel" class="space-y-2">
+            <div v-if="loading" class="space-y-2">
+              <Icon name="lucide:loader-2" class="h-4 w-4 animate-spin text-muted-foreground" />
+              <p class="text-xs text-muted-foreground">Loading...</p>
+            </div>
+            <div v-else-if="hasChannel" class="space-y-2">
               <div class="flex items-center gap-2">
                 <div class="h-2 w-2 rounded-full bg-green-500" />
                 <span class="text-sm">Active</span>
               </div>
-              <p class="text-xs text-muted-foreground">
-                {{ followerCount }} followers
-              </p>
+              <div class="flex items-center justify-between">
+                <p class="text-xs text-muted-foreground">
+                  {{ subscriberCount }} subscribers
+                </p>
+                <NuxtLink to="/creator/subscribers">
+                  <Button variant="ghost" size="sm" class="h-6 px-2 text-xs">
+                    Manage
+                  </Button>
+                </NuxtLink>
+              </div>
             </div>
             <div v-else class="space-y-2">
               <p class="text-xs text-muted-foreground">No channel yet</p>
@@ -97,10 +86,10 @@
               </Button>
             </NuxtLink>
 
-            <NuxtLink to="/creator/followers">
+            <NuxtLink to="/creator/subscribers">
               <Button variant="outline" class="w-full" :disabled="!hasChannel">
-                <Icon name="lucide:users" class="mr-2" />
-                Manage Followers
+                <Icon name="lucide:user-check" class="mr-2" />
+                Manage Subscribers
               </Button>
             </NuxtLink>
 
@@ -140,11 +129,14 @@
 
 <script setup lang="ts">
 const { hasCreatorIdentity, initializeCreator, getCreatorPublicKey } = useR3layCore()
-const { isConnected, walletAddress, connectWallet } = useR3layChain()
+const { isConnected, walletAddress, connectWallet, getChannel, getFollowerCount } = useR3layChain()
+const { deriveChannelIdFromAddress } = await import('../../packages/r3lay-core/src/utils/index.ts')
 
 // Local state
+const loading = ref(true)
 const hasChannel = ref(false)
-const followerCount = ref(0)
+const subscriberCount = ref(0)
+const channelId = ref<string | null>(null)
 
 // Computed
 const canPublish = computed(() => {
@@ -191,13 +183,50 @@ const connect = async () => {
   }
 }
 
+// Load channel data
+const loadChannelData = async () => {
+  if (!isConnected.value || !walletAddress.value) {
+    loading.value = false
+    return
+  }
+
+  try {
+    // Derive channel ID from wallet address
+    const derivedChannelId = deriveChannelIdFromAddress(walletAddress.value)
+    channelId.value = derivedChannelId
+
+    // Check if channel exists
+    try {
+      await getChannel(derivedChannelId)
+      hasChannel.value = true
+
+      // Load subscriber count
+      const count = await getFollowerCount(derivedChannelId)
+      subscriberCount.value = count
+    } catch (e) {
+      // Channel doesn't exist
+      hasChannel.value = false
+      subscriberCount.value = 0
+    }
+  } catch (e) {
+    console.error('Failed to load channel data:', e)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Watch for wallet connection changes
+watch([isConnected, walletAddress], () => {
+  if (isConnected.value && walletAddress.value) {
+    loadChannelData()
+  }
+}, { immediate: true })
+
 // Load on mount
 onMounted(async () => {
   const { loadIdentities } = useR3layCore()
   await loadIdentities()
-  
-  // TODO: Check if channel exists
-  // TODO: Load follower count
+  await loadChannelData()
 })
 
 definePageMeta({
