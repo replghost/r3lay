@@ -138,17 +138,21 @@ export class R3LAYChainClient {
         abi: R3LAYChannelRegistryABI,
         functionName: 'getChannel',
         args: [channelId as Hex],
-      })
+      }) as any
       
+      console.log('Raw contract result:', result)
+      
+      // Viem returns tuple as object with named properties
       return {
         channelId,
-        creator: result[0],
-        currentIndexCid: result[1],
-        meta: result[2],
-        createdAt: Number(result[3]),
-        updatedAt: Number(result[4]),
+        creator: result.creator || result[0],
+        currentIndexCid: result.currentIndexCid || result[1],
+        meta: result.meta || result[2],
+        createdAt: Number(result.createdAt || result[3]),
+        updatedAt: Number(result.updatedAt || result[4]),
       }
     } catch (error) {
+      console.error('getChannel error:', error)
       throw new ChainError(`Failed to get channel: ${channelId}`, error)
     }
   }

@@ -13,12 +13,21 @@
         </p>
       </div>
 
-      <!-- Loading -->
-      <Card v-if="loading">
+      <!-- Loading/Indexing State -->
+      <Card v-if="isIndexing || loading">
         <CardContent class="py-12">
-          <div class="text-center">
+          <div class="text-center space-y-4">
             <Icon name="lucide:loader-2" class="h-12 w-12 mx-auto animate-spin text-muted-foreground mb-4" />
-            <p class="text-muted-foreground">Loading channels...</p>
+            <div>
+              <p class="text-muted-foreground font-medium">{{ isIndexing ? 'Indexing blockchain...' : 'Loading channels...' }}</p>
+              <p class="text-sm text-muted-foreground mt-2">{{ isIndexing ? 'Scanning for channel events' : 'Please wait' }}</p>
+            </div>
+            <div v-if="indexProgress > 0" class="max-w-xs mx-auto">
+              <div class="w-full bg-muted rounded-full h-2">
+                <div class="bg-primary h-2 rounded-full transition-all" :style="{ width: `${indexProgress}%` }"></div>
+              </div>
+              <p class="text-xs text-muted-foreground mt-2">{{ Math.round(indexProgress) }}%</p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -36,44 +45,65 @@
         </CardContent>
       </Card>
 
-      <!-- Info Card -->
-      <Card v-else class="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
+      <!-- Channels List -->
+      <Card v-else>
         <CardHeader>
-          <CardTitle class="flex items-center gap-2">
-            <Icon name="lucide:info" class="h-5 w-5 text-blue-600" />
-            Channel Discovery
-          </CardTitle>
-        </CardHeader>
-        <CardContent class="space-y-4">
-          <p class="text-sm text-muted-foreground">
-            Channel discovery requires indexing blockchain events. For now, get the channel ID directly from creators.
-          </p>
-          
-          <div class="space-y-2">
-            <p class="text-sm font-medium">Your channel (for testing):</p>
-            <div class="p-3 bg-muted rounded-lg">
-              <p class="text-xs font-mono break-all">
-                0x000000000000000000000000a2f70cc9798171d3ef8ff7dae91a76e8a1964438
-              </p>
+          <div class="flex items-center justify-between">
+            <div>
+              <CardTitle>Discovered Channels ({{ channels.length }})</CardTitle>
+              <CardDescription>
+                Channels indexed from the blockchain
+              </CardDescription>
             </div>
-            <Button 
-              @click="copyChannelId" 
-              variant="outline" 
-              size="sm"
-              class="w-full"
-            >
-              <Icon name="lucide:copy" class="mr-2 h-4 w-4" />
-              Copy Channel ID
+            <Button @click="refresh" variant="outline" size="sm" :disabled="isIndexing">
+              <Icon name="lucide:refresh-cw" class="mr-2 h-4 w-4" :class="{ 'animate-spin': isIndexing }" />
+              Refresh
             </Button>
           </div>
+        </CardHeader>
+        <CardContent>
+          <div v-if="channels.length === 0" class="text-center py-12">
+            <Icon name="lucide:inbox" class="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+            <p class="text-muted-foreground">No channels found</p>
+            <p class="text-sm text-muted-foreground mt-2">
+              Be the first to create a channel!
+            </p>
+          </div>
 
-          <div class="pt-4 border-t">
-            <NuxtLink to="/follower">
-              <Button variant="default" class="w-full">
-                <Icon name="lucide:plus" class="mr-2 h-4 w-4" />
-                Subscribe to Channel
-              </Button>
-            </NuxtLink>
+          <div v-else class="space-y-4">
+            <div 
+              v-for="channel in channels" 
+              :key="channel.channelId"
+              class="flex items-start justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+            >
+              <div class="flex-1 space-y-2">
+                <div class="flex items-center gap-2">
+                  <Icon name="lucide:radio" class="h-4 w-4 text-muted-foreground" />
+                  <h3 class="font-semibold">{{ channel.meta || 'Unnamed Channel' }}</h3>
+                </div>
+                
+                <div class="text-xs text-muted-foreground space-y-1">
+                  <p class="font-mono">Creator: {{ channel.creator.slice(0, 10) }}...{{ channel.creator.slice(-8) }}</p>
+                  <p class="font-mono">Channel ID: {{ channel.channelId.slice(0, 20) }}...</p>
+                </div>
+              </div>
+
+              <div class="flex gap-2">
+                <NuxtLink :to="`/follower/channel/${channel.channelId}`">
+                  <Button variant="default" size="sm">
+                    <Icon name="lucide:eye" class="mr-2 h-4 w-4" />
+                    View
+                  </Button>
+                </NuxtLink>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  @click="copyChannelIdToClipboard(channel.channelId)"
+                >
+                  <Icon name="lucide:copy" class="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -147,19 +177,46 @@
 </template>
 
 <script setup lang="ts">
-// State
-const loading = ref(false)
-const error = ref('')
-const channels = ref<any[]>([])
+const { isIndexing, indexProgress, channels: indexedChannels, scanChannelEvents, loadIndexedChannels } = useChannelIndexer()
 
-// Copy channel ID
-const copyChannelId = async () => {
+// State
+const loading = ref(true)
+const error = ref('')
+const channels = computed(() => indexedChannels.value)
+
+// Copy channel ID to clipboard
+const copyChannelIdToClipboard = async (channelId: string) => {
   try {
-    await navigator.clipboard.writeText('0x000000000000000000000000a2f70cc9798171d3ef8ff7dae91a76e8a1964438')
+    await navigator.clipboard.writeText(channelId)
   } catch (e) {
     console.error('Failed to copy:', e)
   }
 }
+
+// Refresh channels
+const refresh = async () => {
+  try {
+    await scanChannelEvents()
+  } catch (e: any) {
+    error.value = e.message || 'Failed to refresh channels'
+  }
+}
+
+// Load channels on mount
+onMounted(async () => {
+  try {
+    await loadIndexedChannels()
+    
+    // If no channels indexed yet, scan blockchain
+    if (channels.value.length === 0) {
+      await scanChannelEvents()
+    }
+  } catch (e: any) {
+    error.value = e.message || 'Failed to load channels'
+  } finally {
+    loading.value = false
+  }
+})
 
 definePageMeta({
   layout: 'default',

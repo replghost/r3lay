@@ -189,9 +189,18 @@ const loadChannel = async () => {
     const channel = await getChannel(channelId)
     channelInfo.value = channel
     
+    console.log('Channel loaded:', channel)
+    console.log('Current index CID:', channel.currentIndexCid)
+    
     // Download feed index from IPFS
+    if (!channel.currentIndexCid) {
+      throw new Error('Channel has no feed index CID')
+    }
+    
     loadingStatus.value = 'Downloading feed index...'
     const feedIndex = await downloadFeedIndex(channel.currentIndexCid)
+    
+    console.log('Feed index loaded:', feedIndex)
     
     // Build posts list
     posts.value = feedIndex.posts.map((cid: string) => ({
