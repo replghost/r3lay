@@ -1,0 +1,6 @@
+{
+  "dependencies": {},
+  "devDependencies": {
+    "shadcn-nuxt": "^2.3.2"
+  }
+}
