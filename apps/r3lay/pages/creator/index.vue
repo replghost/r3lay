@@ -147,11 +147,19 @@ const canPublish = computed(() => {
   return hasCreatorIdentity.value && isConnected.value && hasChannel.value
 })
 
-const truncatedPubkey = computed(() => {
-  const pubkey = getCreatorPublicKey()
-  if (!pubkey) return ''
-  return `${pubkey.slice(0, 8)}...${pubkey.slice(-8)}`
-})
+const truncatedPubkey = ref('')
+
+// Update pubkey when identity changes
+watch(hasCreatorIdentity, async () => {
+  if (hasCreatorIdentity.value) {
+    const pubkey = await getCreatorPublicKey()
+    if (pubkey) {
+      truncatedPubkey.value = `${pubkey.slice(0, 8)}...${pubkey.slice(-8)}`
+    }
+  } else {
+    truncatedPubkey.value = ''
+  }
+}, { immediate: true })
 
 const truncatedAddress = computed(() => {
   if (!walletAddress.value) return ''

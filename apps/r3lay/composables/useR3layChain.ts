@@ -6,6 +6,7 @@
 
 import type { Address } from '@r3lay/chain'
 import type { ChannelId, Cid } from '@r3lay/core'
+import { R3LAYChainClient } from '@r3lay/chain'
 
 export const useR3layChain = () => {
   const config = useRuntimeConfig()
@@ -18,8 +19,6 @@ export const useR3layChain = () => {
   // Initialize chain client
   const initializeClient = async () => {
     if (chainClient.value) return chainClient.value
-    
-    const { R3LAYChainClient } = await import('@r3lay/chain')
     
     chainClient.value = new R3LAYChainClient({
       rpcUrl: config.public.rpcUrl || 'https://paseo-asset-hub-rpc.polkadot.io',

@@ -27,5 +27,28 @@ export default defineNuxtConfig({
      * @default "./components/ui"
      */
     componentDir: './components/ui'
+  },
+
+  vite: {
+    resolve: {
+      alias: {
+        '@r3lay/core': '/Users/wpar/dev/github/replghost/r3lay/packages/r3lay-core/src/index.ts',
+        '@r3lay/ipfs': '/Users/wpar/dev/github/replghost/r3lay/packages/r3lay-ipfs/src/index.ts',
+        '@r3lay/chain': '/Users/wpar/dev/github/replghost/r3lay/packages/r3lay-chain/src/index.ts',
+      }
+    },
+    optimizeDeps: {
+      exclude: ['@r3lay/core', '@r3lay/ipfs', '@r3lay/chain']
+    }
+  },
+
+  runtimeConfig: {
+    public: {
+      rpcUrl: process.env.RPC_URL || 'https://paseo-asset-hub-rpc.polkadot.io',
+      chainId: process.env.CHAIN_ID || '1000',
+      contractAddress: process.env.CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000',
+      ipfsApiUrl: process.env.IPFS_API_URL || 'https://ipfs.infura.io:5001',
+      ipfsGatewayUrl: process.env.IPFS_GATEWAY_URL || 'https://ipfs.io',
+    }
   }
 })

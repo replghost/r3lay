@@ -5,6 +5,17 @@
  */
 
 import type { CreatorIdentity, FollowerIdentity } from '@r3lay/core'
+import {
+  loadCreatorKeys,
+  hasCreatorKeys,
+  generateCreatorIdentity,
+  storeCreatorKeys,
+  loadFollowerKeys,
+  hasFollowerKeys,
+  generateFollowerIdentity,
+  storeFollowerKeys,
+  encodePublicKey,
+} from '@r3lay/core'
 
 export const useR3layCore = () => {
   // Creator identity state
@@ -18,8 +29,6 @@ export const useR3layCore = () => {
   // Initialize creator identity
   const initializeCreator = async () => {
     // Check if already exists
-    const { loadCreatorKeys, hasCreatorKeys, generateCreatorIdentity, storeCreatorKeys } = await import('@r3lay/core')
-    
     if (await hasCreatorKeys()) {
       creatorIdentity.value = await loadCreatorKeys()
       return creatorIdentity.value
@@ -35,8 +44,6 @@ export const useR3layCore = () => {
   
   // Initialize follower identity
   const initializeFollower = async () => {
-    const { loadFollowerKeys, hasFollowerKeys, generateFollowerIdentity, storeFollowerKeys } = await import('@r3lay/core')
-    
     if (await hasFollowerKeys()) {
       followerIdentity.value = await loadFollowerKeys()
       return followerIdentity.value
@@ -52,8 +59,6 @@ export const useR3layCore = () => {
   
   // Load existing identities on mount
   const loadIdentities = async () => {
-    const { loadCreatorKeys, hasCreatorKeys, loadFollowerKeys, hasFollowerKeys } = await import('@r3lay/core')
-    
     if (await hasCreatorKeys()) {
       creatorIdentity.value = await loadCreatorKeys()
     }
@@ -64,16 +69,14 @@ export const useR3layCore = () => {
   }
   
   // Get creator public key
-  const getCreatorPublicKey = () => {
+  const getCreatorPublicKey = async () => {
     if (!creatorIdentity.value) return null
-    const { encodePublicKey } = await import('@r3lay/core')
     return encodePublicKey(creatorIdentity.value.encryptionKeyPair.publicKey)
   }
   
   // Get follower public key
   const getFollowerPublicKey = async () => {
     if (!followerIdentity.value) return null
-    const { encodePublicKey } = await import('@r3lay/core')
     return encodePublicKey(followerIdentity.value.encryptionKeyPair.publicKey)
   }
   

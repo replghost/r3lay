@@ -17,77 +17,81 @@
 
         <!-- Mode Selection -->
         <div class="grid gap-6 md:grid-cols-2 max-w-2xl mx-auto pt-8">
-          <Card class="hover:shadow-lg transition-shadow cursor-pointer" @click="navigateTo('/creator')">
-            <CardHeader>
-              <div class="flex justify-center mb-4">
-                <div class="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Icon name="lucide:pen-line" class="h-8 w-8 text-primary" />
+          <NuxtLink to="/creator">
+            <Card class="hover:shadow-lg transition-shadow cursor-pointer">
+              <CardHeader>
+                <div class="flex justify-center mb-4">
+                  <div class="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Icon name="lucide:pen-line" class="h-8 w-8 text-primary" />
+                  </div>
                 </div>
-              </div>
-              <CardTitle class="text-center">Creator</CardTitle>
-              <CardDescription class="text-center">
-                Publish encrypted content to your followers
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul class="space-y-2 text-sm text-muted-foreground">
-                <li class="flex items-center gap-2">
-                  <Icon name="lucide:check" class="h-4 w-4 text-green-500" />
-                  <span>Create encrypted channels</span>
-                </li>
-                <li class="flex items-center gap-2">
-                  <Icon name="lucide:check" class="h-4 w-4 text-green-500" />
-                  <span>Manage followers privately</span>
-                </li>
-                <li class="flex items-center gap-2">
-                  <Icon name="lucide:check" class="h-4 w-4 text-green-500" />
-                  <span>Publish to IPFS</span>
-                </li>
-              </ul>
-            </CardContent>
-            <CardFooter>
-              <Button class="w-full">
-                Get Started
-                <Icon name="lucide:arrow-right" class="ml-2 h-4 w-4" />
-              </Button>
-            </CardFooter>
-          </Card>
+                <CardTitle class="text-center">Creator</CardTitle>
+                <CardDescription class="text-center">
+                  Publish encrypted content to your followers
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ul class="space-y-2 text-sm text-muted-foreground">
+                  <li class="flex items-center gap-2">
+                    <Icon name="lucide:check" class="h-4 w-4 text-green-500" />
+                    <span>Create encrypted channels</span>
+                  </li>
+                  <li class="flex items-center gap-2">
+                    <Icon name="lucide:check" class="h-4 w-4 text-green-500" />
+                    <span>Manage followers privately</span>
+                  </li>
+                  <li class="flex items-center gap-2">
+                    <Icon name="lucide:check" class="h-4 w-4 text-green-500" />
+                    <span>Publish to IPFS</span>
+                  </li>
+                </ul>
+              </CardContent>
+              <CardFooter>
+                <Button class="w-full">
+                  Get Started
+                  <Icon name="lucide:arrow-right" class="ml-2 h-4 w-4" />
+                </Button>
+              </CardFooter>
+            </Card>
+          </NuxtLink>
 
-          <Card class="hover:shadow-lg transition-shadow cursor-pointer" @click="navigateTo('/follower')">
-            <CardHeader>
-              <div class="flex justify-center mb-4">
-                <div class="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Icon name="lucide:rss" class="h-8 w-8 text-primary" />
+          <NuxtLink to="/follower">
+            <Card class="hover:shadow-lg transition-shadow cursor-pointer">
+              <CardHeader>
+                <div class="flex justify-center mb-4">
+                  <div class="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Icon name="lucide:rss" class="h-8 w-8 text-primary" />
+                  </div>
                 </div>
-              </div>
-              <CardTitle class="text-center">Follower</CardTitle>
-              <CardDescription class="text-center">
-                Follow and read encrypted newsletters
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul class="space-y-2 text-sm text-muted-foreground">
-                <li class="flex items-center gap-2">
-                  <Icon name="lucide:check" class="h-4 w-4 text-green-500" />
-                  <span>Follow channels</span>
-                </li>
-                <li class="flex items-center gap-2">
-                  <Icon name="lucide:check" class="h-4 w-4 text-green-500" />
-                  <span>Decrypt & read posts</span>
-                </li>
-                <li class="flex items-center gap-2">
-                  <Icon name="lucide:check" class="h-4 w-4 text-green-500" />
-                  <span>Sync from IPFS</span>
-                </li>
-              </ul>
-            </CardContent>
-            <CardFooter>
-              <Button class="w-full" variant="outline">
-                Browse Channels
-                <Icon name="lucide:arrow-right" class="ml-2 h-4 w-4" />
-              </Button>
-            </CardFooter>
-          </Card>
+                <CardTitle class="text-center">Follower</CardTitle>
+                <CardDescription class="text-center">
+                  Follow and read encrypted newsletters
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ul class="space-y-2 text-sm text-muted-foreground">
+                  <li class="flex items-center gap-2">
+                    <Icon name="lucide:check" class="h-4 w-4 text-green-500" />
+                    <span>Follow channels</span>
+                  </li>
+                  <li class="flex items-center gap-2">
+                    <Icon name="lucide:check" class="h-4 w-4 text-green-500" />
+                    <span>Decrypt & read posts</span>
+                  </li>
+                  <li class="flex items-center gap-2">
+                    <Icon name="lucide:check" class="h-4 w-4 text-green-500" />
+                    <span>Sync from IPFS</span>
+                  </li>
+                </ul>
+              </CardContent>
+              <CardFooter>
+                <Button class="w-full" variant="outline">
+                  Browse Channels
+                  <Icon name="lucide:arrow-right" class="ml-2 h-4 w-4" />
+                </Button>
+              </CardFooter>
+            </Card>
+          </NuxtLink>
         </div>
 
         <!-- Features -->

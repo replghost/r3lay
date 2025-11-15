@@ -5,6 +5,13 @@
  */
 
 import type { FeedIndex, Cid } from '@r3lay/core'
+import {
+  IPFSClient,
+  uploadFeedIndex as uploadFeedIndexHelper,
+  downloadFeedIndex as downloadFeedIndexHelper,
+  uploadEncryptedPost as uploadEncryptedPostHelper,
+  downloadEncryptedPost as downloadEncryptedPostHelper,
+} from '@r3lay/ipfs'
 
 export const useR3layIPFS = () => {
   const config = useRuntimeConfig()
@@ -15,8 +22,6 @@ export const useR3layIPFS = () => {
   // Initialize IPFS client
   const initializeClient = async () => {
     if (ipfsClient.value) return ipfsClient.value
-    
-    const { IPFSClient } = await import('@r3lay/ipfs')
     
     ipfsClient.value = new IPFSClient({
       apiUrl: config.public.ipfsApiUrl || 'https://ipfs.infura.io:5001',
@@ -29,30 +34,26 @@ export const useR3layIPFS = () => {
   
   // Upload feed index
   const uploadFeedIndex = async (feedIndex: FeedIndex): Promise<Cid> => {
-    const { uploadFeedIndex: upload } = await import('@r3lay/ipfs')
     const client = await initializeClient()
-    return await upload(feedIndex, client)
+    return await uploadFeedIndexHelper(feedIndex, client)
   }
   
   // Download feed index
   const downloadFeedIndex = async (cid: Cid): Promise<FeedIndex> => {
-    const { downloadFeedIndex: download } = await import('@r3lay/ipfs')
     const client = await initializeClient()
-    return await download(cid, client)
+    return await downloadFeedIndexHelper(cid, client)
   }
   
   // Upload encrypted post
   const uploadEncryptedPost = async (bundle: any): Promise<Cid> => {
-    const { uploadEncryptedPost: upload } = await import('@r3lay/ipfs')
     const client = await initializeClient()
-    return await upload(bundle, client)
+    return await uploadEncryptedPostHelper(bundle, client)
   }
   
   // Download encrypted post
   const downloadEncryptedPost = async (cid: Cid) => {
-    const { downloadEncryptedPost: download } = await import('@r3lay/ipfs')
     const client = await initializeClient()
-    return await download(cid, client)
+    return await downloadEncryptedPostHelper(cid, client)
   }
   
   // Get gateway URL
