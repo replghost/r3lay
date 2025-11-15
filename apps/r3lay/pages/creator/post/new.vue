@@ -293,34 +293,46 @@ const publishPost = async () => {
   try {
     // 1. Get creator identity
     publishingStatus.value = 'Loading identity...'
-    const creatorPubkey = await getCreatorPublicKey()
+    const { creatorIdentity } = useR3layCore()
+    
+    if (!creatorIdentity.value) {
+      throw new Error('Creator identity not found')
+    }
+    
+    const identity = creatorIdentity.value
     
     // 2. Build post bundle
     publishingStatus.value = 'Building post bundle...'
-    const { createPostBundle } = await import('../../../packages/r3lay-core/src/bundler/index.ts')
+    const { createEncryptedPostBundle } = await import('../../../packages/r3lay-core/src/bundler/index.ts')
+    const { encodePublicKey } = await import('../../../packages/r3lay-core/src/crypto/index.ts')
     
-    const post = {
-      title: postTitle.value.trim(),
-      content: postContent.value.trim(),
-      timestamp: Date.now(),
-    }
+    // Build content
+    const content = postContent.value.trim()
     
-    // Process attachments
-    const attachmentData: Array<{ name: string; data: Uint8Array; mimeType: string }> = []
+    // Process attachments into Map
+    const attachmentMap = new Map<string, Uint8Array>()
     for (const file of attachments.value) {
       const arrayBuffer = await file.arrayBuffer()
-      attachmentData.push({
-        name: file.name,
-        data: new Uint8Array(arrayBuffer),
-        mimeType: file.type || 'application/octet-stream',
-      })
+      attachmentMap.set(file.name, new Uint8Array(arrayBuffer))
+    }
+    
+    // Build metadata
+    const metadata = {
+      title: postTitle.value.trim(),
+      authorPublicKey: identity.encryptionKeyPair.publicKey,
+      attachments: attachmentMap.size > 0 ? attachmentMap : undefined,
     }
     
     // 3. Encrypt for all followers
     publishingStatus.value = `Encrypting for ${followers.value.length} followers...`
     const followerPubkeys = followers.value.map(f => f.publicKey)
     
-    const bundle = await createPostBundle(post, followerPubkeys, attachmentData)
+    const bundle = await createEncryptedPostBundle(
+      content,
+      metadata,
+      identity.encryptionKeyPair.privateKey,
+      followerPubkeys
+    )
     
     // 4. Upload to IPFS
     publishingStatus.value = 'Uploading to IPFS...'
@@ -336,16 +348,17 @@ const publishPost = async () => {
     const existingPosts = JSON.parse(localStorage.getItem('r3lay-posts') || '[]')
     const newPost = {
       cid,
-      title: post.title,
-      timestamp: post.timestamp,
+      title: metadata.title,
+      timestamp: Date.now(),
     }
     existingPosts.unshift(newPost)
     localStorage.setItem('r3lay-posts', JSON.stringify(existingPosts))
     
     // Create updated feed index
+    const { encodePublicKey: encodeKey } = await import('../../../packages/r3lay-core/src/crypto/index.ts')
     const feedIndex = {
       version: 1 as const,
-      creator: creatorPubkey,
+      creator: encodeKey(identity.encryptionKeyPair.publicKey),
       channelId,
       posts: existingPosts.map((p: any) => p.cid),
       updatedAt: Date.now(),
