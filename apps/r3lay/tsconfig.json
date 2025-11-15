@@ -14,5 +14,15 @@
     {
       "path": "./.nuxt/tsconfig.node.json"
     }
-  ]
+  ],
+  "compilerOptions": {
+    "paths": {
+      "@r3lay/core": ["../../packages/r3lay-core/src/index.ts"],
+      "@r3lay/core/*": ["../../packages/r3lay-core/src/*"],
+      "@r3lay/ipfs": ["../../packages/r3lay-ipfs/src/index.ts"],
+      "@r3lay/ipfs/*": ["../../packages/r3lay-ipfs/src/*"],
+      "@r3lay/chain": ["../../packages/r3lay-chain/src/index.ts"],
+      "@r3lay/chain/*": ["../../packages/r3lay-chain/src/*"]
+    }
+  }
 }

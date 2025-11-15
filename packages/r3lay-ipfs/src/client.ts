@@ -5,8 +5,9 @@
  */
 
 import { create as createIPFSClient, type IPFSHTTPClient } from 'ipfs-http-client'
-import type { Cid } from '@r3lay/core'
-import { StorageError, validateCid } from '@r3lay/core'
+import type { Cid } from '../../r3lay-core/src/types'
+import { StorageError } from '../../r3lay-core/src/types'
+import { validateCid } from '../../r3lay-core/src/utils'
 
 // ============================================================================
 // Types

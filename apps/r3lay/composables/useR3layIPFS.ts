@@ -4,14 +4,14 @@
  * Manages IPFS operations for content storage
  */
 
-import type { FeedIndex, Cid } from '@r3lay/core'
+import type { FeedIndex, Cid } from '../../../packages/r3lay-core/src/types'
+import { IPFSClient } from '../../../packages/r3lay-ipfs/src/client'
 import {
-  IPFSClient,
   uploadFeedIndex as uploadFeedIndexHelper,
   downloadFeedIndex as downloadFeedIndexHelper,
   uploadEncryptedPost as uploadEncryptedPostHelper,
   downloadEncryptedPost as downloadEncryptedPostHelper,
-} from '@r3lay/ipfs'
+} from '../../../packages/r3lay-ipfs/src/helpers'
 
 export const useR3layIPFS = () => {
   const config = useRuntimeConfig()

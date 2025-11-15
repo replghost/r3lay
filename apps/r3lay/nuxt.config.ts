@@ -29,14 +29,13 @@ export default defineNuxtConfig({
     componentDir: './components/ui'
   },
 
+  alias: {
+    '@r3lay/core': '../../packages/r3lay-core/src/index.ts',
+    '@r3lay/ipfs': '../../packages/r3lay-ipfs/src/index.ts',
+    '@r3lay/chain': '../../packages/r3lay-chain/src/index.ts',
+  },
+
   vite: {
-    resolve: {
-      alias: {
-        '@r3lay/core': '/Users/wpar/dev/github/replghost/r3lay/packages/r3lay-core/src/index.ts',
-        '@r3lay/ipfs': '/Users/wpar/dev/github/replghost/r3lay/packages/r3lay-ipfs/src/index.ts',
-        '@r3lay/chain': '/Users/wpar/dev/github/replghost/r3lay/packages/r3lay-chain/src/index.ts',
-      }
-    },
     optimizeDeps: {
       exclude: ['@r3lay/core', '@r3lay/ipfs', '@r3lay/chain']
     }

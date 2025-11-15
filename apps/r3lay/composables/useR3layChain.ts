@@ -4,9 +4,10 @@
  * Manages connection to Paseo Asset Hub and contract interactions
  */
 
-import type { Address } from '@r3lay/chain'
-import type { ChannelId, Cid } from '@r3lay/core'
-import { R3LAYChainClient } from '@r3lay/chain'
+import type { ChannelId, Cid } from '../../../packages/r3lay-core/src/types'
+import { R3LAYChainClient } from '../../../packages/r3lay-chain/src/client'
+
+type Address = `0x${string}`
 
 export const useR3layChain = () => {
   const config = useRuntimeConfig()

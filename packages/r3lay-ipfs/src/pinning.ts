@@ -4,8 +4,8 @@
  * Integration with third-party pinning services (Pinata, Web3.Storage, etc.)
  */
 
-import type { Cid } from '@r3lay/core'
-import { StorageError } from '@r3lay/core'
+import type { Cid } from '../../r3lay-core/src/types'
+import { StorageError } from '../../r3lay-core/src/types'
 
 // ============================================================================
 // Pinata Integration

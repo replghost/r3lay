@@ -15,8 +15,8 @@ import {
   type Hash,
   type Hex,
 } from 'viem'
-import type { Channel, ChannelId, Cid } from '@r3lay/core'
-import { ChainError } from '@r3lay/core'
+import type { Channel, ChannelId, Cid } from '../../r3lay-core/src/types'
+import { ChainError } from '../../r3lay-core/src/types'
 import { R3LAYChannelRegistryABI } from './abi'
 
 // ============================================================================

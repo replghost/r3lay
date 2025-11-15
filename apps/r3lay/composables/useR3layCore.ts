@@ -4,18 +4,20 @@
  * Provides access to core R3LAY functionality
  */
 
-import type { CreatorIdentity, FollowerIdentity } from '@r3lay/core'
+import type { CreatorIdentity, FollowerIdentity } from '../../../packages/r3lay-core/src/types'
 import {
   loadCreatorKeys,
   hasCreatorKeys,
-  generateCreatorIdentity,
   storeCreatorKeys,
   loadFollowerKeys,
   hasFollowerKeys,
-  generateFollowerIdentity,
   storeFollowerKeys,
+} from '../../../packages/r3lay-core/src/crypto/storage'
+import {
+  generateCreatorIdentity,
+  generateFollowerIdentity,
   encodePublicKey,
-} from '@r3lay/core'
+} from '../../../packages/r3lay-core/src/crypto'
 
 export const useR3layCore = () => {
   // Creator identity state

@@ -4,8 +4,9 @@
  * High-level functions for uploading and downloading R3LAY content
  */
 
-import type { Cid, FeedIndex, PostMetadata, EncryptedPostBundle } from '@r3lay/core'
-import { StorageError, MAX_POST_SIZE, MAX_FEED_INDEX_SIZE } from '@r3lay/core'
+import type { Cid, FeedIndex, PostMetadata, EncryptedPostBundle } from '../../r3lay-core/src/types'
+import { StorageError } from '../../r3lay-core/src/types'
+import { MAX_POST_SIZE, MAX_FEED_INDEX_SIZE } from '../../r3lay-core/src/constants'
 import { getIPFSClient, type IPFSClient } from './client'
 
 // ============================================================================
