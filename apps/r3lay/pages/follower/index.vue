@@ -24,11 +24,31 @@
               <p class="text-sm text-muted-foreground">
                 Generate your follower identity to start reading encrypted posts from creators.
               </p>
-              <Button @click="initFollower" :disabled="loading">
-                <Icon v-if="loading" name="lucide:loader-2" class="mr-2 h-4 w-4 animate-spin" />
-                <Icon v-else name="lucide:key" class="mr-2 h-4 w-4" />
-                Generate Identity
-              </Button>
+              <p class="text-xs text-muted-foreground mb-3">Choose initialization method:</p>
+              <div class="flex flex-col gap-2">
+                <Button 
+                  @click="initFollowerFromWalletClick" 
+                  :disabled="loading || !isConnected"
+                  class="w-full justify-start"
+                >
+                  <Icon v-if="loading" name="lucide:loader-2" class="mr-2 h-4 w-4 animate-spin" />
+                  <Icon v-else :name="walletIcon" class="mr-2 h-4 w-4" />
+                  {{ walletButtonText }}
+                </Button>
+                <Button 
+                  @click="initFollower" 
+                  :disabled="loading"
+                  variant="outline"
+                  class="w-full justify-start"
+                >
+                  <Icon v-if="loading" name="lucide:loader-2" class="mr-2 h-4 w-4 animate-spin" />
+                  <Icon v-else name="lucide:key" class="mr-2 h-4 w-4" />
+                  Generate New Keys
+                </Button>
+              </div>
+              <p v-if="!isConnected" class="text-xs text-muted-foreground mt-2">
+                Connect wallet to use wallet-based keys
+              </p>
             </div>
 
           <div v-else class="space-y-4">
@@ -206,8 +226,14 @@
 </template>
 
 <script setup lang="ts">
-const { hasFollowerIdentity, initializeFollower, getFollowerPublicKey } = useR3layCore()
-const { getChannel } = useR3layChain()
+const { 
+  hasFollowerIdentity, 
+  initializeFollower, 
+  initializeFollowerFromWallet,
+  getFollowerPublicKey,
+  detectWallet 
+} = useR3layCore()
+const { getChannel, isConnected, walletAddress } = useR3layChain()
 
 interface Channel {
   channelId: string
@@ -226,7 +252,21 @@ const newChannelId = ref('')
 const addError = ref('')
 const addingChannel = ref(false)
 
-// Initialize follower
+// Wallet detection
+const walletType = computed(() => detectWallet())
+const walletIcon = computed(() => {
+  switch (walletType.value) {
+    case 'metamask': return 'lucide:wallet'
+    case 'talisman': return 'lucide:wallet'
+    default: return 'lucide:wallet'
+  }
+})
+const walletButtonText = computed(() => {
+  const wallet = walletType.value === 'talisman' ? 'Talisman' : walletType.value === 'metamask' ? 'MetaMask' : 'Wallet'
+  return `Use ${wallet} Keys`
+})
+
+// Initialize follower (generate new keys)
 const initFollower = async () => {
   loading.value = true
   error.value = ''
@@ -237,6 +277,31 @@ const initFollower = async () => {
     publicKey.value = await getFollowerPublicKey()
   } catch (e: any) {
     error.value = e.message || 'Failed to initialize follower'
+  } finally {
+    loading.value = false
+  }
+}
+
+// Initialize follower from wallet
+const initFollowerFromWalletClick = async () => {
+  if (!walletAddress.value) {
+    error.value = 'Please connect your wallet first'
+    return
+  }
+  
+  loading.value = true
+  error.value = ''
+  
+  try {
+    await initializeFollowerFromWallet(walletAddress.value)
+    hasIdentity.value = true
+    publicKey.value = await getFollowerPublicKey()
+  } catch (e: any) {
+    if (e.message.includes('rejected')) {
+      error.value = 'Signature request rejected. Please approve the signature to derive your keys.'
+    } else {
+      error.value = e.message || 'Failed to derive keys from wallet'
+    }
   } finally {
     loading.value = false
   }

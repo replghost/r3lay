@@ -157,7 +157,7 @@
 
 <script setup lang="ts">
 const route = useRoute()
-const { followerIdentity } = useR3layCore()
+const { followerIdentity, decryptPostAsFollower } = useR3layCore()
 const { getChannel } = useR3layChain()
 const { downloadFeedIndex, downloadEncryptedPost } = useR3layIPFS()
 
@@ -243,24 +243,16 @@ const togglePost = async (cid: string) => {
   decryptError.value = ''
   
   try {
-    // Download encrypted post
+    // Download encrypted post bundle from IPFS
     const bundle = await downloadEncryptedPost(cid)
     
-    // Decrypt post
-    const { decryptPostBundle } = await import('../../../packages/r3lay-core/src/bundler/index.ts')
-    const { encodePublicKey } = await import('../../../packages/r3lay-core/src/crypto/index.ts')
+    // Decrypt using follower identity
+    const decrypted = await decryptPostAsFollower(bundle)
     
-    const followerPubkey = encodePublicKey(followerIdentity.value.encryptionKeyPair.publicKey)
-    
-    const decrypted = await decryptPostBundle(
-      bundle,
-      followerIdentity.value.encryptionKeyPair.privateKey,
-      followerPubkey
-    )
-    
+    // Set decrypted content
     decryptedContent.value = {
-      content: decrypted,
-      attachments: bundle.metadata?.attachments,
+      content: decrypted.content,
+      attachments: decrypted.metadata?.attachments,
     }
     selectedPost.value = cid
     

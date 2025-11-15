@@ -27,10 +27,32 @@
                 {{ truncatedPubkey }}
               </p>
             </div>
-            <div v-else>
-              <Button @click="initCreator" size="sm">
-                Initialize Identity
-              </Button>
+            <div v-else class="space-y-2">
+              <p class="text-xs text-muted-foreground mb-3">Choose initialization method:</p>
+              <div class="flex flex-col gap-2">
+                <Button 
+                  @click="initCreatorFromWalletClick" 
+                  size="sm"
+                  variant="default"
+                  :disabled="!isConnected"
+                  class="w-full justify-start"
+                >
+                  <Icon :name="walletIcon" class="mr-2 h-4 w-4" />
+                  {{ walletButtonText }}
+                </Button>
+                <Button 
+                  @click="initCreator" 
+                  size="sm"
+                  variant="outline"
+                  class="w-full justify-start"
+                >
+                  <Icon name="lucide:key" class="mr-2 h-4 w-4" />
+                  Generate New Keys
+                </Button>
+              </div>
+              <p v-if="!isConnected" class="text-xs text-muted-foreground mt-2">
+                Connect wallet to use wallet-based keys
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -137,7 +159,13 @@
 </template>
 
 <script setup lang="ts">
-const { hasCreatorIdentity, initializeCreator, getCreatorPublicKey } = useR3layCore()
+const { 
+  hasCreatorIdentity, 
+  initializeCreator, 
+  initializeCreatorFromWallet,
+  getCreatorPublicKey,
+  detectWallet 
+} = useR3layCore()
 const { isConnected, walletAddress, connectWallet, getChannel, getFollowerCount } = useR3layChain()
 
 // Derive channel ID from wallet address (pad to 32 bytes)
@@ -177,6 +205,20 @@ const truncatedAddress = computed(() => {
   return `${walletAddress.value.slice(0, 6)}...${walletAddress.value.slice(-4)}`
 })
 
+// Wallet detection
+const walletType = computed(() => detectWallet())
+const walletIcon = computed(() => {
+  switch (walletType.value) {
+    case 'metamask': return 'lucide:wallet'
+    case 'talisman': return 'lucide:wallet'
+    default: return 'lucide:wallet'
+  }
+})
+const walletButtonText = computed(() => {
+  const wallet = walletType.value === 'talisman' ? 'Talisman' : walletType.value === 'metamask' ? 'MetaMask' : 'Wallet'
+  return `Use ${wallet} Keys`
+})
+
 // Actions
 const initCreator = async () => {
   try {
@@ -187,6 +229,27 @@ const initCreator = async () => {
     console.error('Failed to initialize creator:', error)
     console.error('Error details:', error.message, error.stack)
     alert(`Failed to initialize creator: ${error.message || error}`)
+  }
+}
+
+const initCreatorFromWalletClick = async () => {
+  if (!walletAddress.value) {
+    alert('Please connect your wallet first')
+    return
+  }
+  
+  try {
+    console.log('Deriving keys from wallet...')
+    await initializeCreatorFromWallet(walletAddress.value)
+    console.log('Keys derived successfully from wallet')
+    alert('Keys derived from wallet! Your keys are now linked to your wallet.')
+  } catch (error: any) {
+    console.error('Failed to derive keys from wallet:', error)
+    if (error.message.includes('rejected')) {
+      alert('Signature request rejected. Please approve the signature to derive your keys.')
+    } else {
+      alert(`Failed to derive keys: ${error.message || error}`)
+    }
   }
 }
 

@@ -195,7 +195,7 @@
 </template>
 
 <script setup lang="ts">
-const { creatorIdentity, getCreatorPublicKey } = useR3layCore()
+const { creatorIdentity, getCreatorPublicKey, decryptPostAsCreator } = useR3layCore()
 const { downloadEncryptedPost, downloadFeedIndex } = useR3layIPFS()
 const { getChannel, getFollowerCount, isConnected, walletAddress } = useR3layChain()
 
@@ -303,28 +303,26 @@ const togglePost = async (cid: string) => {
   error.value = ''
   
   try {
-    // Download and decrypt post
+    // Download post bundle from IPFS
     const bundle = await downloadEncryptedPost(cid)
     
-    // Decrypt bundle (creator can read their own posts)
-    if (!creatorIdentity.value) {
-      throw new Error('Creator identity not found')
+    // Decrypt using creator identity
+    const decrypted = await decryptPostAsCreator(bundle)
+    
+    // Set decrypted content
+    postContent.value = {
+      title: decrypted.metadata.title,
+      content: decrypted.content,
+      timestamp: decrypted.metadata.timestamp,
+      attachments: decrypted.attachments 
+        ? Array.from(decrypted.attachments.entries()).map(([name, data]) => ({
+            name,
+            mimeType: 'application/octet-stream', // TODO: get from metadata
+            data
+          }))
+        : []
     }
     
-    const creatorPubkey = await getCreatorPublicKey()
-    if (!creatorPubkey) {
-      throw new Error('Creator public key not found')
-    }
-    
-    // Use the bundler from r3lay-core package
-    const { decryptPostBundle } = await import('@r3lay/core')
-    const decrypted = await decryptPostBundle(
-      bundle,
-      creatorIdentity.value.encryptionKeyPair.privateKey,
-      creatorPubkey
-    )
-    
-    postContent.value = decrypted
     selectedPost.value = cid
   } catch (e: any) {
     console.error('Failed to load post:', e)

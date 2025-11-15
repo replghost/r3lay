@@ -82,6 +82,119 @@ export const useR3layCore = () => {
     return encodePublicKey(followerIdentity.value.encryptionKeyPair.publicKey)
   }
   
+  // Initialize creator from wallet (MetaMask/Talisman)
+  const initializeCreatorFromWallet = async (walletAddress: string) => {
+    try {
+      // Import wallet derivation
+      const { deriveCreatorIdentityFromWallet } = await import('../../../packages/r3lay-core/src/crypto/wallet-derivation.ts')
+      
+      // Derive keys from wallet signature
+      const identity = await deriveCreatorIdentityFromWallet(walletAddress)
+      
+      // Store in state
+      creatorIdentity.value = identity
+      
+      // Optionally cache in session storage (not persistent)
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem('r3lay-creator-wallet-derived', 'true')
+      }
+      
+      return identity
+    } catch (error: any) {
+      console.error('Failed to derive creator identity from wallet:', error)
+      throw error
+    }
+  }
+  
+  // Initialize follower from wallet (MetaMask/Talisman)
+  const initializeFollowerFromWallet = async (walletAddress: string) => {
+    try {
+      // Import wallet derivation
+      const { deriveFollowerIdentityFromWallet } = await import('../../../packages/r3lay-core/src/crypto/wallet-derivation.ts')
+      
+      // Derive keys from wallet signature
+      const identity = await deriveFollowerIdentityFromWallet(walletAddress)
+      
+      // Store in state
+      followerIdentity.value = identity
+      
+      // Optionally cache in session storage (not persistent)
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem('r3lay-follower-wallet-derived', 'true')
+      }
+      
+      return identity
+    } catch (error: any) {
+      console.error('Failed to derive follower identity from wallet:', error)
+      throw error
+    }
+  }
+  
+  // Check if wallet derivation is available
+  const isWalletDerivationAvailable = () => {
+    if (typeof window === 'undefined') return false
+    return !!(window as any).ethereum
+  }
+  
+  // Detect connected wallet
+  const detectWallet = () => {
+    if (typeof window === 'undefined' || !(window as any).ethereum) {
+      return null
+    }
+    
+    const ethereum = (window as any).ethereum
+    
+    if (ethereum.isTalisman) return 'talisman'
+    if (ethereum.isMetaMask) return 'metamask'
+    return 'unknown'
+  }
+  
+  // Decrypt post bundle (for creator viewing their own posts)
+  const decryptPostAsCreator = async (bundle: any) => {
+    if (!creatorIdentity.value) {
+      throw new Error('Creator identity not found')
+    }
+    
+    const creatorPubkey = await getCreatorPublicKey()
+    if (!creatorPubkey) {
+      throw new Error('Creator public key not found')
+    }
+    
+    // Import bundler functions
+    const { decryptPostBundle } = await import('../../../packages/r3lay-core/src/bundler/index.ts')
+    
+    // Creator can decrypt using their own keys
+    return await decryptPostBundle(
+      bundle,
+      creatorIdentity.value.encryptionKeyPair.privateKey,
+      creatorPubkey,
+      bundle.metadata.author
+    )
+  }
+  
+  // Decrypt post bundle (for follower reading posts)
+  const decryptPostAsFollower = async (bundle: any) => {
+    if (!followerIdentity.value) {
+      throw new Error('Follower identity not found')
+    }
+    
+    const followerPubkey = await getFollowerPublicKey()
+    if (!followerPubkey) {
+      throw new Error('Follower public key not found')
+    }
+    
+    // Import bundler functions
+    const { decryptPostBundle } = await import('../../../packages/r3lay-core/src/bundler/index.ts')
+    
+    // Decrypt using follower keys
+    return await decryptPostBundle(
+      bundle,
+      followerIdentity.value.encryptionKeyPair.privateKey,
+      followerPubkey,
+      bundle.metadata.author
+    )
+  }
+  
   return {
     // State
     creatorIdentity: readonly(creatorIdentity),
@@ -92,8 +205,14 @@ export const useR3layCore = () => {
     // Actions
     initializeCreator,
     initializeFollower,
+    initializeCreatorFromWallet,
+    initializeFollowerFromWallet,
     loadIdentities,
     getCreatorPublicKey,
     getFollowerPublicKey,
+    decryptPostAsCreator,
+    decryptPostAsFollower,
+    isWalletDerivationAvailable,
+    detectWallet,
   }
 }
