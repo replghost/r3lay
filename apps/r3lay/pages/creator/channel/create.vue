@@ -186,7 +186,7 @@
 
 <script setup lang="ts">
 const { hasCreatorIdentity, initializeCreator, getCreatorPublicKey } = useR3layCore()
-const { isConnected, walletAddress, connectWallet: connectWalletFn, createChannel: createChannelFn } = useR3layChain()
+const { isConnected, walletAddress, connectWallet: connectWalletFn, createChannel: createChannelFn, getChannel } = useR3layChain()
 const { uploadFeedIndex } = useR3layIPFS()
 
 // State
@@ -235,15 +235,13 @@ const connectWallet = async () => {
   error.value = ''
   
   try {
-    // First, try to add/switch to Paseo Asset Hub network
-    try {
-      const { addPaseoAssetHub } = await import('~/utils/addPaseoNetwork')
-      await addPaseoAssetHub()
-    } catch (networkError) {
-      console.warn('Could not add network, continuing anyway:', networkError)
-    }
-    
+    // First, connect wallet
     await connectWalletFn()
+    
+    // Then switch to Paseo Asset Hub network
+    const { addPaseoAssetHub } = await import('~/utils/addPaseoNetwork')
+    await addPaseoAssetHub()
+    
   } catch (e: any) {
     error.value = e.message || 'Failed to connect wallet'
   } finally {
@@ -262,6 +260,21 @@ const createChannel = async () => {
     const derivedChannelId = deriveChannelIdFromAddress(walletAddress.value!)
     channelId.value = derivedChannelId
     console.log('Channel ID:', derivedChannelId)
+    
+    // Check if channel already exists
+    try {
+      const existingChannel = await getChannel(derivedChannelId)
+      if (existingChannel) {
+        throw new Error('Channel already exists! You can only create one channel per wallet address.')
+      }
+    } catch (e: any) {
+      // If getChannel throws, channel doesn't exist - that's good!
+      if (!e.message.includes('already exists')) {
+        console.log('Channel does not exist yet - proceeding with creation')
+      } else {
+        throw e
+      }
+    }
     
     console.log('Step 2: Creating feed index...')
     // 2. Create empty feed index
@@ -297,7 +310,12 @@ const createChannel = async () => {
     
     channelCreated.value = true
   } catch (e: any) {
-    error.value = e.message || 'Failed to create channel'
+    // Check if it's a network mismatch error
+    if (e.message && e.message.includes('does not match the target chain')) {
+      error.value = 'Wrong network! Please switch to Paseo Asset Hub in your wallet (top-right corner).'
+    } else {
+      error.value = e.message || 'Failed to create channel'
+    }
     console.error('Channel creation error:', e)
     console.error('Error stack:', e.stack)
   } finally {

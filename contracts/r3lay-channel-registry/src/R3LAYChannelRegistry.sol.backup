@@ -1,0 +1,285 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+/**
+ * @title R3LAY Channel Registry
+ * @notice Minimal on-chain registry for R3LAY encrypted publishing channels
+ * @dev Stores only channel metadata and IPFS CID pointers, not encrypted content
+ * 
+ * Architecture:
+ * - Channels are identified by bytes32 channelId
+ * - Each channel has a creator (address), current feed index CID, and metadata
+ * - Only the creator can update their channel
+ * - All content is stored off-chain on IPFS
+ * - Events enable client-side sync and discovery
+ */
+contract R3LAYChannelRegistry {
+    
+    // ============================================================================
+    // Types
+    // ============================================================================
+    
+    struct Channel {
+        address creator;
+        string currentIndexCid;  // IPFS CID of feed_index.json
+        string meta;             // Optional metadata (JSON or text)
+        uint256 createdAt;
+        uint256 updatedAt;
+    }
+    
+    struct SubscriptionRequest {
+        address follower;
+        string followerPublicKey;  // Base64 encoded public key
+        uint256 requestedAt;
+        bool approved;
+        bool processed;
+    }
+    
+    // ============================================================================
+    // State
+    // ============================================================================
+    
+    /// @notice Mapping from channelId to Channel data
+    mapping(bytes32 => Channel) public channels;
+    
+    /// @notice Tracks which channelIds exist
+    mapping(bytes32 => bool) public channelExists;
+    
+    /// @notice Mapping from channelId to array of subscription requests
+    mapping(bytes32 => SubscriptionRequest[]) public subscriptionRequests;
+    
+    /// @notice Mapping from channelId => follower => request index
+    mapping(bytes32 => mapping(address => uint256)) public followerRequestIndex;
+    
+    /// @notice Mapping from channelId => follower => approved status
+    mapping(bytes32 => mapping(address => bool)) public approvedFollowers;
+    
+    // ============================================================================
+    // Events
+    // ============================================================================
+    
+    /// @notice Emitted when a new channel is created
+    event ChannelCreated(
+        bytes32 indexed channelId,
+        address indexed creator,
+        string indexCid,
+        string meta
+    );
+    
+    /// @notice Emitted when a channel's feed index is updated
+    event ChannelUpdated(
+        bytes32 indexed channelId,
+        string newIndexCid
+    );
+    
+    /// @notice Emitted when a channel's metadata is updated
+    event MetadataUpdated(
+        bytes32 indexed channelId,
+        string newMeta
+    );
+    
+    /// @notice Optional: Emitted when a post is published (for finer-grained sync)
+    event PostPublished(
+        bytes32 indexed channelId,
+        string postCid
+    );
+    
+    /// @notice Emitted when a follower requests to subscribe
+    event SubscriptionRequested(
+        bytes32 indexed channelId,
+        address indexed follower,
+        string followerPublicKey
+    );
+    
+    /// @notice Emitted when a creator approves/rejects a subscription
+    event SubscriptionProcessed(
+        bytes32 indexed channelId,
+        address indexed follower,
+        bool approved
+    );
+    
+    // ============================================================================
+    // Errors
+    // ============================================================================
+    
+    error ChannelAlreadyExists(bytes32 channelId);
+    error ChannelNotFound(bytes32 channelId);
+    error NotChannelCreator(bytes32 channelId, address caller);
+    error InvalidCid(string cid);
+    error AlreadyRequested(bytes32 channelId, address follower);
+    error RequestNotFound(bytes32 channelId, address follower);
+    error AlreadyProcessed(bytes32 channelId, address follower);
+    error InvalidChannelId(bytes32 channelId);
+    
+    // ============================================================================
+    // Modifiers
+    // ============================================================================
+    
+    modifier onlyCreator(bytes32 channelId) {
+        if (!channelExists[channelId]) {
+            revert ChannelNotFound(channelId);
+        }
+        if (channels[channelId].creator != msg.sender) {
+            revert NotChannelCreator(channelId, msg.sender);
+        }
+        _;
+    }
+    
+    modifier validCid(string memory cid) {
+        if (bytes(cid).length == 0) {
+            revert InvalidCid(cid);
+        }
+        _;
+    }
+    
+    modifier validChannelId(bytes32 channelId) {
+        if (channelId == bytes32(0)) {
+            revert InvalidChannelId(channelId);
+        }
+        _;
+    }
+    
+    // ============================================================================
+    // Public Functions
+    // ============================================================================
+    
+    /**
+     * @notice Creates a new channel
+     * @param channelId Unique identifier for the channel (bytes32)
+     * @param indexCid IPFS CID of the initial feed_index.json
+     * @param meta Optional metadata string (can be JSON)
+     */
+    function createChannel(
+        bytes32 channelId,
+        string calldata indexCid,
+        string calldata meta
+    ) 
+        external 
+        validChannelId(channelId)
+        validCid(indexCid)
+    {
+        if (channelExists[channelId]) {
+            revert ChannelAlreadyExists(channelId);
+        }
+        
+        channels[channelId] = Channel({
+            creator: msg.sender,
+            currentIndexCid: indexCid,
+            meta: meta,
+            createdAt: block.timestamp,
+            updatedAt: block.timestamp
+        });
+        
+        channelExists[channelId] = true;
+        
+        emit ChannelCreated(channelId, msg.sender, indexCid, meta);
+    }
+    
+    /**
+     * @notice Updates a channel's feed index CID
+     * @param channelId The channel to update
+     * @param newIndexCid New IPFS CID of feed_index.json
+     */
+    function updateChannel(
+        bytes32 channelId,
+        string calldata newIndexCid
+    ) 
+        external 
+        onlyCreator(channelId)
+        validCid(newIndexCid)
+    {
+        channels[channelId].currentIndexCid = newIndexCid;
+        channels[channelId].updatedAt = block.timestamp;
+        
+        emit ChannelUpdated(channelId, newIndexCid);
+    }
+    
+    /**
+     * @notice Updates a channel's metadata
+     * @param channelId The channel to update
+     * @param newMeta New metadata string
+     */
+    function setMeta(
+        bytes32 channelId,
+        string calldata newMeta
+    ) 
+        external 
+        onlyCreator(channelId)
+    {
+        channels[channelId].meta = newMeta;
+        channels[channelId].updatedAt = block.timestamp;
+        
+        emit MetadataUpdated(channelId, newMeta);
+    }
+    
+    /**
+     * @notice Optional: Publishes a post (emits event for fine-grained sync)
+     * @param channelId The channel publishing the post
+     * @param postCid IPFS CID of the encrypted post bundle
+     * @dev This is optional - clients can also sync via ChannelUpdated events
+     */
+    function publishPost(
+        bytes32 channelId,
+        string calldata postCid
+    ) 
+        external 
+        onlyCreator(channelId)
+        validCid(postCid)
+    {
+        emit PostPublished(channelId, postCid);
+    }
+    
+    // ============================================================================
+    // View Functions
+    // ============================================================================
+    
+    /**
+     * @notice Gets channel data
+     * @param channelId The channel to query
+     * @return Channel struct
+     */
+    function getChannel(bytes32 channelId) 
+        external 
+        view 
+        returns (Channel memory) 
+    {
+        if (!channelExists[channelId]) {
+            revert ChannelNotFound(channelId);
+        }
+        return channels[channelId];
+    }
+    
+    /**
+     * @notice Checks if a channel exists
+     * @param channelId The channel to check
+     * @return bool True if channel exists
+     */
+    function exists(bytes32 channelId) 
+        external 
+        view 
+        returns (bool) 
+    {
+        return channelExists[channelId];
+    }
+    
+    /**
+     * @notice Gets the current index CID for a channel
+     * @param channelId The channel to query
+     * @return string The current feed index CID
+     */
+    function getCurrentIndexCid(bytes32 channelId) 
+        external 
+        view 
+        returns (string memory) 
+    {
+        if (!channelExists[channelId]) {
+        external 
+        view 
+        returns (address) 
+    {
+        if (!channelExists[channelId]) {
+            revert ChannelNotFound(channelId);
+        }
+        return channels[channelId].creator;
+    }
+}

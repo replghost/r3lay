@@ -13,6 +13,7 @@ export const useChannelIndexer = () => {
   const indexProgress = useState('indexer-progress', () => 0)
   const lastBlock = useState('indexer-last-block', () => 0n)
   const channels = useState<any[]>('indexed-channels', () => [])
+  const cancelRequested = useState('indexer-cancel', () => false)
   
   // Paseo Asset Hub chain definition
   const paseoAssetHub = defineChain({
@@ -82,6 +83,7 @@ export const useChannelIndexer = () => {
   // Scan for channel events
   const scanChannelEvents = async (fromBlock?: bigint, toBlock?: bigint) => {
     isIndexing.value = true
+    cancelRequested.value = false
     
     try {
       console.log('🔍 Scanning for channel events...')
@@ -101,7 +103,7 @@ export const useChannelIndexer = () => {
       let currentTo = toBlock
       const totalBlocks = toBlock - fromBlock
       
-      while (currentTo > fromBlock) {
+      while (currentTo > fromBlock && !cancelRequested.value) {
         const currentFrom = currentTo - chunkSize < fromBlock ? fromBlock : currentTo - chunkSize
         
         console.log(`Scanning blocks ${currentFrom} to ${currentTo} (backwards)`)
@@ -147,7 +149,11 @@ export const useChannelIndexer = () => {
       // Save to storage
       saveIndexedChannels()
       
-      console.log(`✅ Indexing complete! Found ${channels.value.length} channels`)
+      if (cancelRequested.value) {
+        console.log(`⏸️  Indexing cancelled at block ${lastBlock.value}. Found ${channels.value.length} channels so far.`)
+      } else {
+        console.log(`✅ Indexing complete! Found ${channels.value.length} channels`)
+      }
       
     } catch (error) {
       console.error('Failed to scan events:', error)
@@ -155,7 +161,14 @@ export const useChannelIndexer = () => {
     } finally {
       isIndexing.value = false
       indexProgress.value = 0
+      cancelRequested.value = false
     }
+  }
+  
+  // Cancel indexing
+  const cancelScan = () => {
+    console.log('🛑 Cancel requested...')
+    cancelRequested.value = true
   }
   
   // Start background indexing
@@ -180,6 +193,7 @@ export const useChannelIndexer = () => {
     channels: readonly(channels),
     loadIndexedChannels,
     scanChannelEvents,
+    cancelScan,
     startBackgroundSync,
   }
 }

@@ -1,37 +1,35 @@
 <template>
-  <div class="container mx-auto p-8 max-w-4xl">
-    <div class="space-y-8">
-      <!-- Header -->
-      <div>
-        <NuxtLink to="/" class="text-sm text-muted-foreground hover:text-foreground mb-4 inline-flex items-center">
-          <Icon name="lucide:arrow-left" class="mr-2 h-4 w-4" />
-          Back to Home
-        </NuxtLink>
-        <h1 class="text-4xl font-bold mt-4">Follower Dashboard</h1>
-        <p class="text-muted-foreground mt-2">
-          Read encrypted posts from creators you follow
-        </p>
-      </div>
+  <div>
+    <FollowerNav />
+    <div class="container mx-auto p-8 max-w-4xl">
+      <div class="space-y-8">
+        <!-- Header -->
+        <div>
+          <h1 class="text-4xl font-bold">Follower Dashboard</h1>
+          <p class="text-muted-foreground mt-2">
+            Read encrypted posts from your subscribed channels
+          </p>
+        </div>
 
-      <!-- Identity Status -->
-      <Card>
-        <CardHeader>
-          <CardTitle>Your Follower Identity</CardTitle>
-          <CardDescription>
-            Your encryption keys for reading encrypted posts
-          </CardDescription>
-        </CardHeader>
-        <CardContent class="space-y-4">
-          <div v-if="!hasIdentity" class="space-y-4">
-            <p class="text-sm text-muted-foreground">
-              Generate your follower identity to start reading encrypted posts from creators.
-            </p>
-            <Button @click="initFollower" :disabled="loading">
-              <Icon v-if="loading" name="lucide:loader-2" class="mr-2 h-4 w-4 animate-spin" />
-              <Icon v-else name="lucide:key" class="mr-2 h-4 w-4" />
-              Generate Identity
-            </Button>
-          </div>
+        <!-- Identity Status -->
+        <Card>
+          <CardHeader>
+            <CardTitle>Your Follower Identity</CardTitle>
+            <CardDescription>
+              Your encryption keys for reading encrypted posts
+            </CardDescription>
+          </CardHeader>
+          <CardContent class="space-y-4">
+            <div v-if="!hasIdentity" class="space-y-4">
+              <p class="text-sm text-muted-foreground">
+                Generate your follower identity to start reading encrypted posts from creators.
+              </p>
+              <Button @click="initFollower" :disabled="loading">
+                <Icon v-if="loading" name="lucide:loader-2" class="mr-2 h-4 w-4 animate-spin" />
+                <Icon v-else name="lucide:key" class="mr-2 h-4 w-4" />
+                Generate Identity
+              </Button>
+            </div>
 
           <div v-else class="space-y-4">
             <div class="flex items-start gap-3 p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
@@ -111,13 +109,14 @@
           <div v-else class="space-y-4">
             <NuxtLink 
               v-for="channel in channels" 
-              :key="channel.channelId"
-              :to="`/follower/channel/${channel.channelId}`"
+              :key="channel.channelId || channel"
+              :to="`/follower/channel/${channel.channelId || channel}`"
               class="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors block"
             >
               <div class="flex-1">
                 <p class="font-medium">{{ channel.name || 'Unnamed Channel' }}</p>
-                <p class="text-xs text-muted-foreground font-mono">{{ channel.channelId.slice(0, 20) }}...</p>
+                <p v-if="channel.channelId" class="text-xs text-muted-foreground font-mono">{{ channel.channelId.slice(0, 20) }}...</p>
+                <p v-else class="text-xs text-muted-foreground font-mono">{{ channel.slice(0, 20) }}...</p>
               </div>
               <Icon name="lucide:chevron-right" class="h-5 w-5 text-muted-foreground" />
             </NuxtLink>
@@ -201,6 +200,7 @@
           </p>
         </CardContent>
       </Card>
+      </div>
     </div>
   </div>
 </template>

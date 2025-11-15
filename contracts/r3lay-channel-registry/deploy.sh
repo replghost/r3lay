@@ -39,7 +39,7 @@ CONTRACT_NAME="R3LAYChannelRegistry"
 
 echo "📋 Configuration:"
 echo "  RPC URL: $RPC_URL"
-echo "  Contract: $CONTRACT_NAME"
+echo "  Contract: $CONTRACT_NAME v2.0 (with subscription management)"
 echo ""
 
 # Check if Foundry Polkadot is installed

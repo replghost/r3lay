@@ -267,11 +267,20 @@ const togglePost = async (cid: string) => {
     // Download and decrypt post
     const bundle = await downloadEncryptedPost(cid)
     
-    // Parse bundle
-    const { parsePostBundle } = await import('../../../packages/r3lay-core/src/bundler/index.ts')
-    const creatorPubkey = await getCreatorPublicKey()
+    // Decrypt bundle (creator can read their own posts)
+    const { decryptPostBundle } = await import('../../../packages/r3lay-core/src/bundler/index.ts')
+    const { creatorIdentity } = useR3layCore()
     
-    const decrypted = await parsePostBundle(bundle, creatorPubkey!)
+    if (!creatorIdentity.value) {
+      throw new Error('Creator identity not found')
+    }
+    
+    const creatorPubkey = await getCreatorPublicKey()
+    const decrypted = await decryptPostBundle(
+      bundle,
+      creatorIdentity.value.encryptionKeyPair.privateKey,
+      creatorPubkey!
+    )
     
     postContent.value = decrypted
     selectedPost.value = cid

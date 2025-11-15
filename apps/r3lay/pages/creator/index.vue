@@ -1,13 +1,15 @@
 <template>
-  <div class="container mx-auto p-8 max-w-4xl">
-    <div class="space-y-8">
-      <!-- Header -->
-      <div>
-        <h1 class="text-4xl font-bold">Creator Dashboard</h1>
-        <p class="text-muted-foreground mt-2">
-          Manage your encrypted publishing channel
-        </p>
-      </div>
+  <div>
+    <CreatorNav />
+    <div class="container mx-auto p-8 max-w-4xl">
+      <div class="space-y-8">
+        <!-- Header -->
+        <div>
+          <h1 class="text-4xl font-bold">Creator Dashboard</h1>
+          <p class="text-muted-foreground mt-2">
+            Manage your encrypted publishing channel
+          </p>
+        </div>
 
       <!-- Status Cards -->
       <div class="grid gap-4 md:grid-cols-3">
@@ -131,6 +133,7 @@
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   </div>
 </template>
@@ -200,4 +203,5 @@ onMounted(async () => {
 definePageMeta({
   layout: 'default',
 })
+
 </script>

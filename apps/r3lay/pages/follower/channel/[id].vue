@@ -110,8 +110,17 @@
                     </div>
                   </div>
 
-                  <div v-if="decryptError && selectedPost === post.cid" class="mt-4 p-3 bg-destructive/10 border border-destructive rounded-lg">
-                    <p class="text-sm text-destructive">{{ decryptError }}</p>
+                  <div v-if="decryptError && selectedPost === post.cid" class="mt-4 p-4 bg-destructive/10 border border-destructive rounded-lg">
+                    <div class="flex items-start gap-3">
+                      <Icon name="lucide:alert-circle" class="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+                      <div class="space-y-2">
+                        <p class="text-sm font-medium text-destructive">Cannot Decrypt Post</p>
+                        <p class="text-sm text-destructive/80">{{ decryptError }}</p>
+                        <p class="text-xs text-muted-foreground">
+                          This post may have been published before you subscribed, or you don't have access to this channel.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -258,6 +267,7 @@ const togglePost = async (cid: string) => {
   } catch (e: any) {
     console.error('Failed to decrypt post:', e)
     decryptError.value = e.message || 'Failed to decrypt post. You may not have access to this post.'
+    selectedPost.value = cid // Show error for this post
   } finally {
     decrypting.value = null
   }
