@@ -16,3 +16,6 @@ export * from './constants'
 // Export crypto functions
 export * from './crypto'
 export * from './crypto/storage'
+
+// Export bundler
+export * from './bundler'
