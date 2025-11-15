@@ -1,4 +1,15 @@
 {
+  "name": "r3lay-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun run --filter=r3lay dev",
+    "build": "bun run --filter=r3lay build",
+    "install:all": "bun install && bun install --filter=@r3lay/core && bun install --filter=@r3lay/ipfs && bun install --filter=@r3lay/chain"
+  },
   "dependencies": {},
   "devDependencies": {
     "shadcn-nuxt": "^2.3.2"
