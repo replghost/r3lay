@@ -1,120 +1,105 @@
 <script setup lang="ts">
-import { useSidebar } from '~/components/ui/sidebar'
+import { useR3mailWallet } from '~/composables/useR3mailWallet'
 
-defineProps<{
-  user: {
-    name: string
-    email: string
-    avatar: string
+const wallet = useR3mailWallet()
+
+// Format address for display
+const formattedAddress = computed(() => {
+  if (!wallet.address.value) return ''
+  const addr = wallet.address.value
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`
+})
+
+// Copy address to clipboard
+const copied = ref(false)
+async function copyAddress() {
+  if (!wallet.address.value) return
+  
+  try {
+    await navigator.clipboard.writeText(wallet.address.value)
+    copied.value = true
+    setTimeout(() => {
+      copied.value = false
+    }, 2000)
+  } catch (error) {
+    console.error('Failed to copy address:', error)
   }
-}>()
-
-const { isMobile, setOpenMobile } = useSidebar()
-
-function handleLogout() {
-  navigateTo('/login')
 }
 
-const showModalTheme = ref(false)
+// Wallet connection
+const connecting = ref(false)
+
+async function handleConnect() {
+  connecting.value = true
+  try {
+    await wallet.connect()
+  } catch (error) {
+    console.error('Failed to connect wallet:', error)
+  } finally {
+    connecting.value = false
+  }
+}
+
+function handleDisconnect() {
+  wallet.disconnect()
+}
 </script>
 
 <template>
   <SidebarMenu>
-    <SidebarMenuItem>
-      <DropdownMenu>
-        <DropdownMenuTrigger as-child>
-          <SidebarMenuButton
-            size="lg"
-            class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-          >
-            <Avatar class="h-8 w-8 rounded-lg">
-              <AvatarImage :src="user.avatar" :alt="user.name" />
-              <AvatarFallback class="rounded-lg">
-                {{ user.name.split(' ').map((n) => n[0]).join('') }}
-              </AvatarFallback>
-            </Avatar>
-            <div class="grid flex-1 text-left text-sm leading-tight">
-              <span class="truncate font-semibold">{{ user.name }}</span>
-              <span class="truncate text-xs">{{ user.email }}</span>
-            </div>
-            <Icon name="i-lucide-chevrons-up-down" class="ml-auto size-4" />
-          </SidebarMenuButton>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          class="min-w-56 w-[--radix-dropdown-menu-trigger-width] rounded-lg"
-          :side="isMobile ? 'bottom' : 'right'"
-          align="end"
-        >
-          <DropdownMenuLabel class="p-0 font-normal">
-            <div class="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-              <Avatar class="h-8 w-8 rounded-lg">
-                <AvatarImage :src="user.avatar" :alt="user.name" />
-                <AvatarFallback class="rounded-lg">
-                  {{ user.name.split(' ').map((n) => n[0]).join('') }}
-                </AvatarFallback>
-              </Avatar>
-              <div class="grid flex-1 text-left text-sm leading-tight">
-                <span class="truncate font-semibold">{{ user.name }}</span>
-                <span class="truncate text-xs">{{ user.email }}</span>
-              </div>
-            </div>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuGroup>
-            <DropdownMenuItem>
-              <Icon name="i-lucide-sparkles" />
-              Upgrade to Pro
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-          <DropdownMenuSeparator />
-          <DropdownMenuGroup>
-            <DropdownMenuItem>
-              <Icon name="i-lucide-badge-check" />
-              Account
-            </DropdownMenuItem>
-            <DropdownMenuItem as-child>
-              <NuxtLink to="/settings" @click="setOpenMobile(false)">
-                <Icon name="i-lucide-settings" />
-                Settings
-              </NuxtLink>
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Icon name="i-lucide-bell" />
-              Notifications
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem as-child>
-              <NuxtLink to="https://github.com/dianprata/nuxt-shadcn-dashboard" external target="_blank">
-                <Icon name="i-lucide-github" />
-                Github Repository
-              </NuxtLink>
-            </DropdownMenuItem>
-            <DropdownMenuItem @click="showModalTheme = true">
-              <Icon name="i-lucide-paintbrush" />
-              Theme
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem @click="handleLogout">
-            <Icon name="i-lucide-log-out" />
-            Log out
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+    <!-- Not Connected -->
+    <SidebarMenuItem v-if="!wallet.isConnected.value">
+      <SidebarMenuButton 
+        size="lg" 
+        @click="handleConnect"
+        :disabled="connecting"
+      >
+        <Icon name="i-lucide-wallet" class="h-5 w-5" />
+        <span class="flex-1 text-left">
+          {{ connecting ? 'Connecting...' : 'Connect Wallet' }}
+        </span>
+      </SidebarMenuButton>
     </SidebarMenuItem>
-  </SidebarMenu>
 
-  <Dialog v-model:open="showModalTheme">
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>Customize</DialogTitle>
-        <DialogDescription class="text-xs text-muted-foreground">
-          Customize & Preview in Real Time
-        </DialogDescription>
-      </DialogHeader>
-      <ThemeCustomize />
-    </DialogContent>
-  </Dialog>
+    <!-- Connected -->
+    <template v-else>
+      <SidebarMenuItem>
+        <SidebarMenuButton size="lg" class="cursor-default hover:bg-transparent">
+          <Icon name="i-lucide-check-circle" class="h-5 w-5 text-green-500" />
+          <div class="grid flex-1 text-left text-sm leading-tight">
+            <span class="truncate font-semibold">{{ formattedAddress }}</span>
+            <span class="truncate text-xs text-muted-foreground">Connected</span>
+          </div>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+      
+      <!-- Actions -->
+      <SidebarMenuItem>
+        <div class="flex gap-1 px-2">
+          <Button 
+            variant="ghost" 
+            size="sm"
+            class="flex-1"
+            @click="copyAddress"
+            :title="copied ? 'Copied!' : 'Copy address'"
+          >
+            <Icon :name="copied ? 'i-lucide-check' : 'i-lucide-copy'" class="h-4 w-4 mr-2" />
+            {{ copied ? 'Copied!' : 'Copy' }}
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm"
+            class="flex-1"
+            @click="handleDisconnect"
+            title="Disconnect wallet"
+          >
+            <Icon name="i-lucide-log-out" class="h-4 w-4 mr-2" />
+            Disconnect
+          </Button>
+        </div>
+      </SidebarMenuItem>
+    </template>
+  </SidebarMenu>
 </template>
 
 <style scoped>

@@ -45,11 +45,21 @@
             size="icon"
             class="h-8 w-8"
             @click.stop="toggleArchive"
+            title="Archive message"
           >
             <Icon 
               :name="message.archived ? 'lucide:archive-restore' : 'lucide:archive'" 
               class="h-4 w-4"
             />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            class="h-8 w-8 text-destructive hover:text-destructive"
+            @click.stop="handleDelete"
+            title="Delete message"
+          >
+            <Icon name="lucide:trash-2" class="h-4 w-4" />
           </Button>
         </div>
       </div>
@@ -78,6 +88,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   click: []
   archive: [msgId: string]
+  delete: [msgId: string]
 }>()
 
 function truncateAddress(address: string): string {
@@ -139,6 +150,10 @@ function getPreview(body: string): string {
 
 function toggleArchive() {
   emit('archive', props.message.msgId)
+}
+
+function handleDelete() {
+  emit('delete', props.message.msgId)
 }
 </script>
 

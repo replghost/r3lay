@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import { useR3mailWallet } from '~/composables/useR3mailWallet'
-
 const route = useRoute()
-const wallet = useR3mailWallet()
 
 function setLinks() {
   if (route.fullPath === '/') {
@@ -12,6 +9,15 @@ function setLinks() {
   const segments = route.fullPath.split('/').filter(item => item !== '')
 
   const breadcrumbs = segments.map((item, index) => {
+    // Special handling for message IDs (long hex strings)
+    if (item.startsWith('0x') && item.length > 20) {
+      const shortened = `${item.slice(0, 6)}...${item.slice(-4)}`
+      return {
+        title: shortened,
+        href: `/${segments.slice(0, index + 1).join('/')}`,
+      }
+    }
+    
     const str = item.replace(/-/g, ' ')
     const title = str
       .split(' ')
@@ -37,47 +43,6 @@ watch(() => route.fullPath, (val) => {
     links.value = setLinks()
   }
 })
-
-// Wallet connection
-const connecting = ref(false)
-
-async function handleConnect() {
-  connecting.value = true
-  try {
-    await wallet.connect()
-  } catch (error) {
-    console.error('Failed to connect wallet:', error)
-  } finally {
-    connecting.value = false
-  }
-}
-
-function handleDisconnect() {
-  wallet.disconnect()
-}
-
-// Format address for display
-const formattedAddress = computed(() => {
-  if (!wallet.address.value) return ''
-  const addr = wallet.address.value
-  return `${addr.slice(0, 6)}...${addr.slice(-4)}`
-})
-
-// Copy address to clipboard
-const copied = ref(false)
-async function copyAddress() {
-  if (!wallet.address.value) return
-  
-  try {
-    await navigator.clipboard.writeText(wallet.address.value)
-    copied.value = true
-    setTimeout(() => {
-      copied.value = false
-    }, 2000)
-  } catch (error) {
-    console.error('Failed to copy address:', error)
-  }
-}
 </script>
 
 <template>
@@ -88,39 +53,6 @@ async function copyAddress() {
       <BaseBreadcrumbCustom :links="links" />
     </div>
     <div class="ml-auto flex items-center gap-4">
-      <!-- Wallet Connection -->
-      <div v-if="!wallet.isConnected.value">
-        <Button 
-          @click="handleConnect" 
-          :disabled="connecting"
-          size="sm"
-        >
-          <Icon name="i-lucide-wallet" class="mr-2 h-4 w-4" />
-          {{ connecting ? 'Connecting...' : 'Connect Wallet' }}
-        </Button>
-      </div>
-      <div v-else class="flex items-center gap-2">
-        <Badge variant="outline" class="gap-2">
-          <Icon name="i-lucide-check-circle" class="h-3 w-3 text-green-500" />
-          {{ formattedAddress }}
-        </Badge>
-        <Button 
-          @click="copyAddress" 
-          variant="ghost" 
-          size="sm"
-          :title="copied ? 'Copied!' : 'Copy address'"
-        >
-          <Icon :name="copied ? 'i-lucide-check' : 'i-lucide-copy'" class="h-4 w-4" />
-        </Button>
-        <Button 
-          @click="handleDisconnect" 
-          variant="ghost" 
-          size="sm"
-          title="Disconnect wallet"
-        >
-          <Icon name="i-lucide-log-out" class="h-4 w-4" />
-        </Button>
-      </div>
       <slot />
     </div>
   </header>

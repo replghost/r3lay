@@ -83,6 +83,8 @@
           :key="message.msgId"
           :message="message"
           @click="openMessage(message)"
+          @archive="handleArchive"
+          @delete="handleDelete"
         />
       </div>
     </div>
@@ -220,6 +222,22 @@ function openMessage(message: StoredMessage) {
   
   // Navigate to message view
   router.push(`/message/${message.msgId}`)
+}
+
+async function handleArchive(msgId: string) {
+  try {
+    await messageStore.archiveMessage(msgId)
+  } catch (err) {
+    console.error('Failed to archive message:', err)
+  }
+}
+
+async function handleDelete(msgId: string) {
+  try {
+    await messageStore.deleteMessage(msgId)
+  } catch (err) {
+    console.error('Failed to delete message:', err)
+  }
 }
 
 </script>

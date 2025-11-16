@@ -9,16 +9,6 @@ function resolveNavItemComponent(item: NavLink | NavGroup | NavSectionTitle): an
   return resolveComponent('LayoutSidebarNavLink')
 }
 
-const user: {
-  name: string
-  email: string
-  avatar: string
-} = {
-  name: 'Guest User',
-  email: 'Connect wallet to continue',
-  avatar: 'https://api.dicebear.com/7.x/shapes/svg?seed=guest',
-}
-
 const { sidebar } = useAppSettings()
 </script>
 
@@ -42,7 +32,7 @@ const { sidebar } = useAppSettings()
       </SidebarGroup>
     </SidebarContent>
     <SidebarFooter>
-      <LayoutSidebarNavFooter :user="user" />
+      <LayoutSidebarNavFooter />
     </SidebarFooter>
     <SidebarRail />
   </Sidebar>

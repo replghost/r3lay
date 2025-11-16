@@ -65,6 +65,7 @@
     "@unovis/vue": "^1.6.1",
     "embla-carousel": "^8.6.0",
     "embla-carousel-vue": "^8.6.0",
+    "ethers": "^6.15.0",
     "marked": "^11.0.0",
     "nanoid": "^5.1.6",
     "pinata-web3": "^0.5.4",

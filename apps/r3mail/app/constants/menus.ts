@@ -18,15 +18,4 @@ export const navMenu: NavMenu[] = [
   },
 ]
 
-export const navMenuBottom: NavMenuItems = [
-  {
-    title: 'Documentation',
-    icon: 'i-lucide-book-open',
-    link: 'https://github.com/replghost/r3lay',
-  },
-  {
-    title: 'Settings',
-    icon: 'i-lucide-settings',
-    link: '/settings',
-  },
-]
+export const navMenuBottom: NavMenuItems = []

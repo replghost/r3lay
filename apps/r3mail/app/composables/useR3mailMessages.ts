@@ -70,9 +70,26 @@ export function useR3mailMessages() {
       envelope.bodyCid = bodyCid
       console.log('Body uploaded:', bodyCid)
 
-      // 3. Sign envelope
-      // TODO: Implement envelope signing with wallet
-      envelope.signature = '0x' + '0'.repeat(130) // Placeholder
+      // 3. Sign envelope with wallet
+      console.log('Signing envelope...')
+      const envelopeToSign = { ...envelope }
+      delete (envelopeToSign as any).signature // Don't include signature in what we sign
+      
+      // Create canonical JSON string for signing
+      const message = JSON.stringify(envelopeToSign, Object.keys(envelopeToSign).sort())
+      
+      // Sign with MetaMask using personal_sign (EIP-191)
+      if (!window.ethereum) {
+        throw new Error('MetaMask not available')
+      }
+      
+      const signature = await window.ethereum.request({
+        method: 'personal_sign',
+        params: [message, wallet.address.value],
+      }) as string
+      
+      envelope.signature = signature
+      console.log('✍️ Envelope signed:', signature.slice(0, 20) + '...')
 
       // 4. Upload envelope to IPFS
       console.log('Uploading envelope to IPFS...')
@@ -215,6 +232,36 @@ export function useR3mailMessages() {
   }
 
   /**
+   * Delete message
+   */
+  async function deleteMessage(msgId: string) {
+    try {
+      const db = await openDB()
+      const transaction = db.transaction(['messages'], 'readwrite')
+      const store = transaction.objectStore('messages')
+      
+      return new Promise<void>((resolve, reject) => {
+        const request = store.delete(msgId)
+        
+        request.onsuccess = () => {
+          // Remove from local array
+          const index = messages.value.findIndex(m => m.msgId === msgId)
+          if (index !== -1) {
+            messages.value.splice(index, 1)
+          }
+          console.log('🗑️ Deleted message:', msgId)
+          resolve()
+        }
+        
+        request.onerror = () => reject(request.error)
+      })
+    } catch (err) {
+      console.error('Failed to delete message:', err)
+      throw err
+    }
+  }
+
+  /**
    * Archive message
    */
   async function archiveMessage(msgId: string) {
@@ -249,7 +296,24 @@ export function useR3mailMessages() {
       console.log('Fetching envelope:', event.envelopeCid)
       const envelope = await fetchFromIPFS(event.envelopeCid) as MessageEnvelope
       
-      // 2. Fetch encrypted body from IPFS
+      // 2. Verify envelope signature
+      console.log('Verifying envelope signature...')
+      const { signature, ...envelopeToVerify } = envelope
+      
+      // Create canonical JSON string (same as signing)
+      const signedMessage = JSON.stringify(envelopeToVerify, Object.keys(envelopeToVerify).sort())
+      
+      // Verify signature using ethers
+      const { ethers } = await import('ethers')
+      const recoveredAddress = ethers.utils.verifyMessage(signedMessage, signature)
+      
+      if (recoveredAddress.toLowerCase() !== event.from.toLowerCase()) {
+        throw new Error(`Invalid signature! Expected ${event.from}, got ${recoveredAddress}. Message may be forged or tampered.`)
+      }
+      
+      console.log('✅ Signature verified - message is authentic')
+      
+      // 3. Fetch encrypted body from IPFS
       console.log('Fetching body from:', envelope.bodyCid)
       const encryptedBodyData = await fetchFromIPFS(envelope.bodyCid)
       
@@ -487,6 +551,7 @@ export function useR3mailMessages() {
     storeMessage,
     getMessage,
     markAsRead,
+    deleteMessage,
     archiveMessage,
     processMessageEvent,
     watchInbox,
