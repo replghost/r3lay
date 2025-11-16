@@ -4,25 +4,30 @@
  * Handles message encryption and decryption using ECDH + XChaCha20-Poly1305
  */
 
-import sodium from 'libsodium-wrappers'
-import { deriveKeysFromWallet } from '@r3lay/core/crypto/wallet-derivation'
-import type {
-  MessageEnvelope,
-  EncryptedMessageBundle,
-  DecryptedMessage,
-  CreateMessageOptions,
-  DecryptMessageOptions,
-  KeyPair,
-} from './types'
+import * as sodium from 'libsodium-wrappers'
 import {
   EncryptionError,
   DecryptionError,
   ValidationError,
+  type MessageEnvelope,
+  type EncryptedMessageBundle,
+  type DecryptedMessage,
+  type KeyPair,
+  type CreateMessageOptions,
+  type DecryptMessageOptions,
 } from './types'
 import { canonicalEnvelopeJSON } from './envelope'
 
 // Initialize libsodium
-await sodium.ready
+let sodiumReady: Promise<void> | null = null
+
+async function ensureSodium() {
+  if (!sodiumReady) {
+    sodiumReady = sodium.ready
+  }
+  await sodiumReady
+  return sodium
+}
 
 /**
  * Derive public key from EVM address using wallet signature
@@ -32,14 +37,9 @@ await sodium.ready
  * @returns Public key for encryption
  */
 export async function derivePublicKeyFromAddress(address: string): Promise<Uint8Array> {
-  try {
-    // This uses the same wallet-based derivation as R3LAY
-    // The public key is deterministic from the address
-    const keys = await deriveKeysFromWallet(address)
-    return keys.publicKey
-  } catch (error) {
-    throw new EncryptionError(`Failed to derive public key: ${error}`)
-  }
+  // TODO: Implement wallet-based key derivation
+  // For now, return a placeholder that will be replaced by the composable
+  throw new EncryptionError('derivePublicKeyFromAddress not yet implemented - use composable')
 }
 
 /**
@@ -276,5 +276,7 @@ export async function decryptMessage(
  * @returns Key pair for encryption
  */
 export async function getUserKeys(address: string): Promise<KeyPair> {
-  return await deriveKeysFromWallet(address)
+  // TODO: Implement wallet-based key derivation
+  // This will be handled by the composable layer
+  throw new EncryptionError('getUserKeys not yet implemented - use composable')
 }

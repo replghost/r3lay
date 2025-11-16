@@ -1,4 +1,4 @@
-[
+export const mailboxAbi = [
   {
     "type": "function",
     "name": "getInboxCount",
@@ -156,4 +156,4 @@
       }
     ]
   }
-]
+] as const

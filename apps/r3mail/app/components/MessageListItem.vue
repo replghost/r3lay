@@ -1,11 +1,11 @@
 <template>
   <Card 
-    class="message-list-item cursor-pointer hover:bg-accent transition-colors"
+    class="message-list-item cursor-pointer hover:bg-accent transition-colors mb-2"
     :class="{ 'border-l-4 border-l-primary': message.unread }"
     @click="$emit('click')"
   >
-    <CardContent class="p-4">
-      <div class="flex items-start gap-4">
+    <CardContent class="p-3">
+      <div class="flex items-start gap-3">
         <!-- Avatar -->
         <div class="flex-shrink-0">
           <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">

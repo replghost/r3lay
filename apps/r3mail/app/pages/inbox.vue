@@ -10,6 +10,10 @@
           </p>
         </div>
         <div class="flex gap-2">
+          <Button @click="loadMockData" variant="outline" size="sm" v-if="wallet.isConnected.value">
+            <Icon name="lucide:database" class="mr-2 h-4 w-4" />
+            Load Mock Messages
+          </Button>
           <Button @click="refreshMessages" variant="outline" size="sm">
             <Icon name="lucide:refresh-cw" class="mr-2 h-4 w-4" :class="{ 'animate-spin': messageStore.loading.value }" />
             Refresh
@@ -103,6 +107,7 @@ import { computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useR3mailWallet } from '~/composables/useR3mailWallet'
 import { useR3mailMessages, type StoredMessage } from '~/composables/useR3mailMessages'
+import { addMockMessages } from '~/utils/mockMessages'
 
 // Composables
 const router = useRouter()
@@ -128,12 +133,13 @@ onMounted(async () => {
   
   if (connected) {
     await loadMessages()
-    startWatchingInbox()
+    // TODO: Fix event watching - RPC doesn't support indexed address params
+    // startWatchingInbox()
   }
 })
 
 onUnmounted(() => {
-  stopWatchingInbox()
+  // stopWatchingInbox()
 })
 
 // Methods
@@ -141,7 +147,8 @@ async function connectWallet() {
   try {
     await wallet.connect()
     await loadMessages()
-    startWatchingInbox()
+    // TODO: Fix event watching
+    // startWatchingInbox()
   } catch (err: any) {
     console.error('Failed to connect wallet:', err)
   }
@@ -158,6 +165,21 @@ async function loadMessages() {
 async function refreshMessages() {
   await loadMessages()
   // TODO: Fetch new messages from chain
+}
+
+async function loadMockData() {
+  if (!wallet.address.value) {
+    console.error('No wallet connected')
+    return
+  }
+  
+  try {
+    await addMockMessages(wallet.address.value)
+    await loadMessages()
+    console.log('✅ Mock messages loaded!')
+  } catch (err) {
+    console.error('Failed to load mock messages:', err)
+  }
 }
 
 function openMessage(message: StoredMessage) {

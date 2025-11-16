@@ -14,11 +14,9 @@ import {
   type Address,
   type Hash,
   type Log,
-  watchContractEvent,
-  type WatchContractEventReturnType,
 } from 'viem'
 import { R3MAIL_CONTRACT_ADDRESS, PASEO_ASSET_HUB_RPC, NETWORK_CONFIG } from './config'
-import mailboxAbi from './abi.json'
+import { mailboxAbi } from './abi'
 
 /**
  * Message notification event from contract
@@ -195,17 +193,18 @@ export class R3mailChainClient {
    * @param options - Watch options
    * @returns Unwatch function
    */
-  watchInbox(options: WatchInboxOptions): WatchContractEventReturnType {
+  watchInbox(options: WatchInboxOptions): () => void {
     const { address, onMessage, onError, pollInterval = 4000 } = options
     
-    return watchContractEvent(this.publicClient, {
+    // Use publicClient.watchContractEvent instead of standalone function
+    return this.publicClient.watchContractEvent({
       address: R3MAIL_CONTRACT_ADDRESS,
       abi: mailboxAbi,
       eventName: 'MessageNotified',
       args: {
         to: address,
       },
-      onLogs: async (logs) => {
+      onLogs: async (logs: any) => {
         for (const log of logs) {
           try {
             const event = this.parseMessageEvent(log)

@@ -9,28 +9,6 @@ function resolveNavItemComponent(item: NavLink | NavGroup | NavSectionTitle): an
   return resolveComponent('LayoutSidebarNavLink')
 }
 
-const teams: {
-  name: string
-  logo: string
-  plan: string
-}[] = [
-  {
-    name: 'Acme Inc',
-    logo: 'i-lucide-gallery-vertical-end',
-    plan: 'Enterprise',
-  },
-  {
-    name: 'Acme Corp.',
-    logo: 'i-lucide-audio-waveform',
-    plan: 'Startup',
-  },
-  {
-    name: 'Evil Corp.',
-    logo: 'i-lucide-command',
-    plan: 'Free',
-  },
-]
-
 const user: {
   name: string
   email: string
@@ -38,7 +16,7 @@ const user: {
 } = {
   name: 'Guest User',
   email: 'Connect wallet to continue',
-  avatar: '/avatars/avatartion.png',
+  avatar: 'https://api.dicebear.com/7.x/shapes/svg?seed=guest',
 }
 
 const { sidebar } = useAppSettings()
@@ -47,8 +25,10 @@ const { sidebar } = useAppSettings()
 <template>
   <Sidebar :collapsible="sidebar?.collapsible" :side="sidebar?.side" :variant="sidebar?.variant">
     <SidebarHeader>
-      <LayoutSidebarNavHeader :teams="teams" />
-      <Search />
+      <div class="flex items-center gap-2 px-4 py-2">
+        <Icon name="i-lucide-mail" class="h-6 w-6" />
+        <span class="font-bold text-lg">R3MAIL</span>
+      </div>
     </SidebarHeader>
     <SidebarContent>
       <SidebarGroup v-for="(nav, indexGroup) in navMenu" :key="indexGroup">
