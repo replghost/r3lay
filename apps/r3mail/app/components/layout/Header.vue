@@ -62,6 +62,22 @@ const formattedAddress = computed(() => {
   const addr = wallet.address.value
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`
 })
+
+// Copy address to clipboard
+const copied = ref(false)
+async function copyAddress() {
+  if (!wallet.address.value) return
+  
+  try {
+    await navigator.clipboard.writeText(wallet.address.value)
+    copied.value = true
+    setTimeout(() => {
+      copied.value = false
+    }, 2000)
+  } catch (error) {
+    console.error('Failed to copy address:', error)
+  }
+}
 </script>
 
 <template>
@@ -89,9 +105,18 @@ const formattedAddress = computed(() => {
           {{ formattedAddress }}
         </Badge>
         <Button 
+          @click="copyAddress" 
+          variant="ghost" 
+          size="sm"
+          :title="copied ? 'Copied!' : 'Copy address'"
+        >
+          <Icon :name="copied ? 'i-lucide-check' : 'i-lucide-copy'" class="h-4 w-4" />
+        </Button>
+        <Button 
           @click="handleDisconnect" 
           variant="ghost" 
           size="sm"
+          title="Disconnect wallet"
         >
           <Icon name="i-lucide-log-out" class="h-4 w-4" />
         </Button>

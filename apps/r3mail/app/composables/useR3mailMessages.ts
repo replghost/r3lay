@@ -121,10 +121,16 @@ export function useR3mailMessages() {
       const index = store.index('to')
       
       return new Promise<StoredMessage[]>((resolve, reject) => {
-        const request = index.getAll(wallet.address.value)
+        // Normalize address to lowercase for querying
+        const normalizedAddress = wallet.address.value.toLowerCase()
+        const request = index.getAll(normalizedAddress)
         
         request.onsuccess = () => {
           messages.value = request.result || []
+          console.log(`📬 Loaded ${messages.value.length} messages from IndexedDB for ${normalizedAddress}`)
+          messages.value.forEach((m, i) => {
+            console.log(`${i}: ${m.subject || '⚠️ Failed to load'} (from: ${m.from.slice(0, 10)}...)`)
+          })
           resolve(messages.value)
         }
         
@@ -302,11 +308,11 @@ export function useR3mailMessages() {
         senderPublicKey
       })
       
-      // 4. Store in IndexedDB
+      // 4. Store in IndexedDB (normalize addresses to lowercase)
       const message: StoredMessage = {
         msgId: event.msgId,
-        from: event.from,
-        to: event.to,
+        from: event.from.toLowerCase(),
+        to: event.to.toLowerCase(),
         subject: decrypted.subject,
         body: decrypted.body,
         timestamp: Number(event.timestamp) * 1000,
@@ -317,7 +323,7 @@ export function useR3mailMessages() {
       }
       
       await storeMessage(message)
-      console.log('Message processed and stored!')
+      console.log(`💾 Stored message: ${message.msgId} to: ${message.to}`)
       
       return message
     } catch (err) {

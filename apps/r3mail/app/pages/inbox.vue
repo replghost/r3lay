@@ -134,6 +134,13 @@ watch(() => messageStore.messages.value, (newMessages) => {
   console.log('🔄 Messages changed in UI:', newMessages.length, newMessages)
 }, { deep: true })
 
+// Watch wallet connection to check key registration
+watch(() => wallet.isConnected.value, async (connected) => {
+  if (connected && wallet.keys.value) {
+    isKeyRegistered.value = await wallet.hasPublicKey()
+  }
+})
+
 // Lifecycle
 onMounted(async () => {
   console.log('📱 Inbox mounted')
