@@ -15,9 +15,14 @@ const { sidebar } = useAppSettings()
 <template>
   <Sidebar :collapsible="sidebar?.collapsible" :side="sidebar?.side" :variant="sidebar?.variant">
     <SidebarHeader>
-      <div class="flex items-center gap-2 px-4 py-2">
-        <Icon name="i-lucide-mail" class="h-6 w-6" />
-        <span class="font-bold text-lg">R3MAIL</span>
+      <div class="px-4 py-2">
+        <div class="flex items-center gap-2">
+          <Icon name="i-lucide-mail" class="h-6 w-6" />
+          <div class="flex flex-col gap-0.5">
+            <span class="font-bold text-lg leading-tight">R3MAIL</span>
+            <span class="text-xs text-muted-foreground">Encrypted Unstoppable Mail</span>
+          </div>
+        </div>
       </div>
     </SidebarHeader>
     <SidebarContent>

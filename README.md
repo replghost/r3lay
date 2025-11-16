@@ -76,26 +76,6 @@ r3lay/
 - [Product Requirements](./docs/R3LAY-PRD.md) - Product specification
 - [Protocol Spec](./docs/R3LAY-001.md) - Protocol specification
 
-## Development Status
-
-### ✅ Completed
-- [x] Phase 0: Monorepo structure setup
-- [x] Phase 2: Core types library (`@r3lay/core`)
-- [x] Phase 1: Smart contract implementation
-
-### 🚧 In Progress
-- [ ] Phase 3: Crypto module (X25519, encryption)
-- [ ] Phase 4: IPFS client
-- [ ] Phase 5: Chain interaction layer
-
-### 📋 Planned
-- [ ] Phase 6: Post bundling system
-- [ ] Phase 7: Creator UI
-- [ ] Phase 8: Follower UI
-- [ ] Phase 9: Persistence & settings
-- [ ] Phase 10: E2E testing
-- [ ] Phase 11: Documentation & hardening
-
 ## Quick Start
 
 ### Prerequisites
@@ -148,30 +128,47 @@ forge create --rpc-url $PASEO_RPC_URL \
 
 ## Packages
 
-### [@r3lay/core](./packages/r3lay-core)
-Core types, utilities, and constants for the R3LAY protocol.
+### [@r3mail/core](./packages/r3mail-core)
+Core encryption and messaging functionality for R3MAIL.
 
 ```typescript
-import type { Channel, PostMetadata, FeedIndex } from '@r3lay/core'
-import { validateCid, encodeBase64 } from '@r3lay/core'
+import { createEncryptedMessage, decryptMessage } from '@r3mail/core'
+import { ensureSodium } from '@r3mail/core'
 ```
 
-### [@r3lay/chain](./packages/r3lay-chain) (Coming Soon)
-Chain interaction layer for Paseo Asset Hub EVM.
+**Features:**
+- X25519 key exchange
+- XSalsa20-Poly1305 encryption
+- Message envelope signing
+- IPFS integration
 
-### [@r3lay/ipfs](./packages/r3lay-ipfs) (Coming Soon)
-IPFS client abstraction for content storage.
+### [@r3mail/chain](./packages/r3mail-chain)
+Chain interaction layer for R3MAIL on Paseo Asset Hub EVM.
 
-## Smart Contract
+```typescript
+import { R3mailChainClient } from '@r3mail/chain'
+```
 
-The `R3LAYChannelRegistry` contract is deployed on Paseo Asset Hub EVM.
+**Features:**
+- Public key registry
+- Message event indexing
+- Transaction management
+
+### [@r3lay/core](./packages/r3lay-core)
+Core types and utilities for the R3LAY publishing protocol (in development).
+
+## Smart Contracts
+
+### R3MAIL Public Key Registry
+Deployed on Paseo Asset Hub EVM for managing user public keys.
 
 **Key Functions:**
-- `createChannel(channelId, indexCid, meta)` - Register a new channel
-- `updateChannel(channelId, newIndexCid)` - Update feed pointer
-- `getChannel(channelId)` - Query channel data
+- `registerPublicKey(publicKey)` - Register encryption public key
+- `getPublicKey(address)` - Query user's public key
+- `updatePublicKey(publicKey)` - Update public key
 
-See [contract documentation](./contracts/r3lay-channel-registry/README.md) for details.
+### R3LAY Channel Registry (In Development)
+For managing decentralized publishing channels.
 
 ## Contributing
 

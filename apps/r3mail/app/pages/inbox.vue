@@ -108,8 +108,23 @@
 
       <!-- Right Column: Message Preview -->
       <div class="flex-1 flex flex-col overflow-hidden bg-muted/10">
+        <!-- Not Connected State -->
+        <div v-if="!wallet.isConnected.value" class="flex-1 flex items-center justify-center p-8">
+          <div class="text-center max-w-md">
+            <Icon name="lucide:wallet" class="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+            <h3 class="text-lg font-semibold mb-2">Connect your wallet</h3>
+            <p class="text-sm text-muted-foreground mb-4">
+              Connect your wallet to view and send encrypted messages
+            </p>
+            <Button @click="wallet.connect" size="lg">
+              <Icon name="lucide:wallet" class="mr-2 h-5 w-5" />
+              Connect Wallet
+            </Button>
+          </div>
+        </div>
+
         <!-- No Message Selected -->
-        <div v-if="!selectedMessage" class="flex-1 flex items-center justify-center">
+        <div v-else-if="!selectedMessage" class="flex-1 flex items-center justify-center">
           <div class="text-center text-muted-foreground">
             <Icon name="lucide:mail-open" class="h-16 w-16 mx-auto mb-4 opacity-50" />
             <p>Select a message to read</p>
