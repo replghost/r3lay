@@ -131,10 +131,12 @@ export async function fetchFromIPFS(cid: string): Promise<any> {
     }
   }
   
+  // Use dedicated Pinata gateway (no rate limits with your account)
+  // Or use public gateways as fallback
   const gateways = [
-    `https://gateway.pinata.cloud/ipfs/${cid}`,
     `https://ipfs.io/ipfs/${cid}`,
-    `https://cloudflare-ipfs.com/ipfs/${cid}`,
+    `https://dweb.link/ipfs/${cid}`,
+    `https://gateway.pinata.cloud/ipfs/${cid}`,
   ]
 
   for (const gateway of gateways) {

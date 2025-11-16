@@ -245,15 +245,36 @@ Purpose: Encryption Key Generation (HKDF-SHA256)`
         signature.slice(2).match(/.{1,2}/g)!.map((byte: string) => parseInt(byte, 16))
       )
       
-      // Use HKDF to derive both keys with different info strings for domain separation
-      // This is the industry standard approach (used in TLS 1.3, Signal Protocol, etc.)
+      // Use HKDF to derive a seed, then generate proper Curve25519 keypair
+      // This ensures the keys are valid for libsodium's crypto_box functions
       const encoder = new TextEncoder()
-      const publicKey = hkdf(sha256, sigBytes, undefined, encoder.encode('r3mail-public-key-v1'), 32)
-      const privateKey = hkdf(sha256, sigBytes, undefined, encoder.encode('r3mail-private-key-v1'), 32)
-
+      const seed = hkdf(sha256, sigBytes, undefined, encoder.encode('r3mail-seed-v1'), 32)
+      
+      // Generate proper Curve25519 keypair from seed using libsodium
+      // Import from @r3mail/core which has libsodium as a dependency
+      const { ensureSodium } = await import('@r3mail/core')
+      const sodium = await ensureSodium()
+      
+      const keyPair = sodium.crypto_box_seed_keypair(seed)
+      
+      console.log('Generated keypair:')
+      console.log('  Public key length:', keyPair.publicKey.length)
+      console.log('  Private key length:', keyPair.privateKey.length)
+      console.log('  Public key (first 16):', Array.from(keyPair.publicKey.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(''))
+      console.log('  Private key (first 16):', Array.from(keyPair.privateKey.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(''))
+      
+      // Test that the keypair works with crypto_box_beforenm
+      try {
+        const testSharedSecret = sodium.crypto_box_beforenm(keyPair.publicKey, keyPair.privateKey)
+        console.log('✅ Keypair is valid for crypto_box_beforenm')
+        console.log('  Shared secret (first 16):', Array.from(testSharedSecret.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(''))
+      } catch (err) {
+        console.error('❌ Keypair test failed:', err)
+      }
+      
       keys.value = {
-        publicKey,
-        privateKey
+        publicKey: keyPair.publicKey,
+        privateKey: keyPair.privateKey
       }
 
       // Save to localStorage for future sessions
@@ -336,15 +357,36 @@ Purpose: Encryption Key Generation (HKDF-SHA256)`
   }
 
   /**
-   * Check if current user has registered their public key
+   * Check if current user has registered their public key AND it matches current keys
    */
   async function hasPublicKey(): Promise<boolean> {
-    if (!address.value || !chainClient.value) {
+    if (!address.value || !chainClient.value || !keys.value) {
       return false
     }
 
     try {
-      return await chainClient.value.hasPublicKey(address.value as `0x${string}`)
+      // Get registered public key from chain
+      const registeredKey = await chainClient.value.getPublicKey(address.value as `0x${string}`)
+      
+      if (!registeredKey) {
+        console.log('❌ No public key registered on-chain')
+        return false
+      }
+      
+      // Check if registered key matches current key
+      const currentKey = keys.value.publicKey
+      const keysMatch = registeredKey.length === currentKey.length &&
+        registeredKey.every((byte, i) => byte === currentKey[i])
+      
+      if (!keysMatch) {
+        console.log('⚠️ Registered key does not match current key!')
+        console.log('Registered (first 16 bytes):', Array.from(registeredKey.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(''))
+        console.log('Current (first 16 bytes):', Array.from(currentKey.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(''))
+        return false
+      }
+      
+      console.log('✅ Public key registered and matches current key')
+      return true
     } catch (err) {
       console.error('Error checking public key:', err)
       return false

@@ -265,9 +265,13 @@ export class R3mailChainClient {
     })
     
     // Filter client-side for the recipient address
+    console.log(`🔍 Filtering ${logs.length} events for recipient: ${address.toLowerCase()}`)
     const filtered = logs.filter((log: any) => {
-      return log.args.to?.toLowerCase() === address.toLowerCase()
+      const match = log.args.to?.toLowerCase() === address.toLowerCase()
+      console.log(`  Event to: ${log.args.to?.toLowerCase()} - Match: ${match}`)
+      return match
     })
+    console.log(`✅ Filtered to ${filtered.length} messages for ${address.toLowerCase()}`)
     
     return filtered.map(log => this.parseMessageEvent(log))
   }

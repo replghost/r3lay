@@ -21,11 +21,11 @@ import { canonicalEnvelopeJSON } from './envelope'
 // Initialize libsodium
 let sodiumReady: Promise<typeof _sodium> | null = null
 
-async function ensureSodium() {
+export async function ensureSodium() {
   if (!sodiumReady) {
     sodiumReady = _sodium.ready.then(() => _sodium)
   }
-  return await sodiumReady
+  return sodiumReady
 }
 
 /**
@@ -112,8 +112,8 @@ async function wrapCEK(
   nonce: Uint8Array
 ): Promise<string> {
   const lib = await ensureSodium()
-  // Compute ECDH shared secret
-  const sharedSecret = lib.crypto_scalarmult(senderPrivateKey, recipientPublicKey)
+  // Compute ECDH shared secret using crypto_box_beforenm (same as unwrap)
+  const sharedSecret = lib.crypto_box_beforenm(recipientPublicKey, senderPrivateKey)
   
   // Encrypt CEK with shared secret
   const wrappedCEK = lib.crypto_secretbox_easy(cek, nonce, sharedSecret)
@@ -242,14 +242,15 @@ export async function decryptMessage(
   options: DecryptMessageOptions
 ): Promise<DecryptedMessage> {
   try {
-    const { envelope, encryptedBody, recipientPrivateKey } = options
+    const { envelope, encryptedBody, recipientPrivateKey, senderPublicKey: providedSenderPublicKey } = options
     
     // 1. Decode nonce and wrapped CEK
     const nonce = await base64Decode(envelope.nonce)
     const wrappedCEK = await base64Decode(envelope.cek)
     
-    // 2. Derive sender's public key
-    const senderPublicKey = await derivePublicKeyFromAddress(envelope.from)
+    // 2. Get sender's public key (use provided or derive from address)
+    const senderPublicKey = providedSenderPublicKey 
+      || await derivePublicKeyFromAddress(envelope.from)
     
     // 3. Unwrap CEK
     const cek = await unwrapCEK(wrappedCEK, senderPublicKey, recipientPrivateKey, nonce)

@@ -125,6 +125,9 @@ export interface DecryptMessageOptions {
   
   /** Recipient's private key */
   recipientPrivateKey: Uint8Array
+  
+  /** Sender's public key (optional - will derive from address if not provided) */
+  senderPublicKey?: Uint8Array
 }
 
 /**

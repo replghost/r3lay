@@ -48,6 +48,11 @@ export function useR3mailMessages() {
         throw new Error(`Recipient ${to} has not registered their public key yet. They need to register first.`)
       }
       
+      console.log('🔐 ENCRYPTION KEYS:')
+      console.log('  Sender private key (first 16):', Array.from(wallet.keys.value.privateKey.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(''))
+      console.log('  Sender public key (first 16):', Array.from(wallet.keys.value.publicKey.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(''))
+      console.log('  Recipient public key (first 16):', Array.from(recipientPublicKey.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(''))
+      
       // 2. Encrypt message
       const { envelope, encryptedBody } = await createEncryptedMessage({
         from: wallet.address.value,

@@ -103,7 +103,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useR3mailWallet } from '~/composables/useR3mailWallet'
 import { useR3mailMessages, type StoredMessage } from '~/composables/useR3mailMessages'
@@ -129,13 +129,21 @@ const unreadCount = computed(() => {
 // Background sync
 let stopBackgroundSync: (() => void) | null = null
 
+// Debug: Watch messages
+watch(() => messageStore.messages.value, (newMessages) => {
+  console.log('🔄 Messages changed in UI:', newMessages.length, newMessages)
+}, { deep: true })
+
 // Lifecycle
 onMounted(async () => {
+  console.log('📱 Inbox mounted')
   // Check if wallet is already connected
   const connected = await wallet.checkConnection()
+  console.log('🔌 Wallet connected:', connected)
   
   if (connected) {
     await loadMessages()
+    console.log('📬 Messages after load:', messageStore.messages.value.length)
     // Check if public key is registered
     isKeyRegistered.value = await wallet.hasPublicKey()
     // Start background sync (polls every 30 seconds)

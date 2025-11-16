@@ -38,4 +38,5 @@ export {
   decryptMessage,
   derivePublicKeyFromAddress,
   getUserKeys,
+  ensureSodium,
 } from './message'
