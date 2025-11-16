@@ -27,6 +27,16 @@ contract R3mailMailbox {
         uint256 timestamp
     );
 
+    /**
+     * @notice Emitted when a user registers their public key
+     * @param user User's EVM address
+     * @param publicKey User's X25519 public key (32 bytes)
+     */
+    event PublicKeyRegistered(
+        address indexed user,
+        bytes32 publicKey
+    );
+
     // ============================================================================
     // State
     // ============================================================================
@@ -37,6 +47,9 @@ contract R3mailMailbox {
     /// @notice Mapping to track if a message ID has been used (prevent duplicates)
     mapping(bytes32 => bool) public messageExists;
 
+    /// @notice Mapping of user address to their registered public key
+    mapping(address => bytes32) public publicKeys;
+
     // ============================================================================
     // Errors
     // ============================================================================
@@ -44,6 +57,8 @@ contract R3mailMailbox {
     error MessageAlreadyExists(bytes32 msgId);
     error InvalidRecipient();
     error EmptyCid();
+    error InvalidPublicKey();
+    error PublicKeyNotRegistered(address user);
 
     // ============================================================================
     // Functions
@@ -98,5 +113,38 @@ contract R3mailMailbox {
      */
     function hasMessage(bytes32 msgId) external view returns (bool) {
         return messageExists[msgId];
+    }
+
+    /**
+     * @notice Register your public key for encryption
+     * @param publicKey Your X25519 public key (32 bytes)
+     * @dev Can be called multiple times to update key
+     */
+    function registerPublicKey(bytes32 publicKey) external {
+        if (publicKey == bytes32(0)) revert InvalidPublicKey();
+        
+        publicKeys[msg.sender] = publicKey;
+        
+        emit PublicKeyRegistered(msg.sender, publicKey);
+    }
+
+    /**
+     * @notice Get a user's registered public key
+     * @param user Address to look up
+     * @return publicKey The user's registered public key
+     */
+    function getPublicKey(address user) external view returns (bytes32) {
+        bytes32 publicKey = publicKeys[user];
+        if (publicKey == bytes32(0)) revert PublicKeyNotRegistered(user);
+        return publicKey;
+    }
+
+    /**
+     * @notice Check if a user has registered a public key
+     * @param user Address to check
+     * @return registered True if user has registered a key
+     */
+    function hasPublicKey(address user) external view returns (bool) {
+        return publicKeys[user] != bytes32(0);
     }
 }

@@ -11,6 +11,7 @@
     "install:all": "bun install && bun install --filter=@r3lay/core && bun install --filter=@r3lay/ipfs && bun install --filter=@r3lay/chain"
   },
   "dependencies": {
+    "@noble/hashes": "^2.0.1",
     "@polkadot/api": "^16.5.2",
     "smoldot": "^2.0.39"
   },

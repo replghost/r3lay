@@ -4,7 +4,9 @@
  */
 
 import { ref, computed } from 'vue'
-import { createR3mailChainClient } from '@r3mail/chain'
+import { createR3mailChainClient, type R3mailChainClient } from '@r3mail/chain'
+import { hkdf } from '@noble/hashes/hkdf.js'
+import { sha256 } from '@noble/hashes/sha2.js'
 
 const isConnected = ref(false)
 const address = ref<string>('')
@@ -14,11 +16,84 @@ const error = ref('')
 
 export function useR3mailWallet() {
   /**
+   * Switch to Paseo Asset Hub network
+   */
+  async function switchNetwork() {
+    if (typeof window === 'undefined' || !window.ethereum) {
+      throw new Error('No wallet found')
+    }
+
+    const chainId = '0x190f1b46' // 420420422 - actual chain ID from RPC
+
+    try {
+      // Try to switch to Paseo Asset Hub
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId }],
+      })
+      return true
+    } catch (switchError: any) {
+      // This error code indicates that the chain has not been added to MetaMask
+      if (switchError.code === 4902) {
+        try {
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [
+              {
+                chainId,
+                chainName: 'Passet Hub',
+                nativeCurrency: {
+                  name: 'PAS',
+                  symbol: 'PAS',
+                  decimals: 18,
+                },
+                rpcUrls: ['https://testnet-passet-hub-eth-rpc.polkadot.io'],
+                blockExplorerUrls: ['https://blockscout-passet-hub.parity-testnet.parity.io'],
+              },
+            ],
+          })
+          return true
+        } catch (addError: any) {
+          // Check if network already exists (common error)
+          if (addError.code === -32603 || addError.message?.includes('already exists') || addError.message?.includes('Duplicate')) {
+            console.log('Network already exists, attempting to switch again...')
+            try {
+              await window.ethereum.request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId }],
+              })
+              return true
+            } catch (retryError: any) {
+              console.error('Failed to switch after detecting existing network:', retryError)
+              if (retryError.message?.includes('Unknown network')) {
+                throw new Error(`You have a network with the wrong Chain ID saved in your wallet. Please manually switch to Passet Hub (Chain ID: 420420422) or delete the incorrect network from your wallet settings.`)
+              }
+            }
+          }
+          
+          // Only throw for real errors, not duplicate network or user rejection
+          if (addError.code !== 4001) { // 4001 is user rejection
+            console.error('Failed to add network:', addError)
+            throw new Error(`Please add Passet Hub network manually in MetaMask. Chain ID: 420420422`)
+          }
+          return false
+        }
+      } else {
+        // User rejected or other error
+        console.error('Failed to switch network:', switchError)
+        throw new Error('Please switch to Paseo Asset Hub network in MetaMask')
+      }
+    }
+  }
+
+  /**
    * Initialize chain client
    */
-  function initClient() {
+  async function initClient() {
     if (!chainClient.value) {
       chainClient.value = createR3mailChainClient()
+      // Connect wallet client for write operations
+      await chainClient.value.connectWallet()
     }
     return chainClient.value
   }
@@ -70,8 +145,12 @@ export function useR3mailWallet() {
       
       console.log('Connected to wallet:', address.value)
       
-      // Initialize chain client
-      initClient()
+      // Switch to Paseo Asset Hub network
+      console.log('Switching to Paseo Asset Hub...')
+      await switchNetwork()
+      
+      // Initialize chain client and connect wallet
+      await initClient()
       
       // Derive keys from wallet signature
       await deriveKeys()
@@ -142,14 +221,14 @@ export function useR3mailWallet() {
 
     try {
       // Request signature from wallet for key derivation
-      const message = `R3MAIL Key Derivation v1
+      const message = `R3MAIL Key Derivation v2
 
-This signature will be used to derive your encryption keys.
+This signature will be used to derive your encryption keys using HKDF.
 It will NOT give R3MAIL access to your wallet or funds.
 
 Address: ${address.value.toLowerCase()}
-Version: 1
-Purpose: Encryption Key Generation`
+Version: 2
+Purpose: Encryption Key Generation (HKDF-SHA256)`
 
       console.log('Requesting signature for key derivation...')
       
@@ -160,24 +239,17 @@ Purpose: Encryption Key Generation`
 
       console.log('Signature received, deriving keys...')
 
-      // Derive keys from signature
-      // For now, we'll use a simple hash-based derivation
-      // In production, this should use proper key derivation (HKDF, etc.)
-      const encoder = new TextEncoder()
+      // Derive keys from signature using HKDF
+      // HKDF provides cryptographically secure key derivation with proper domain separation
       const sigBytes = new Uint8Array(
         signature.slice(2).match(/.{1,2}/g)!.map((byte: string) => parseInt(byte, 16))
       )
       
-      // Hash for public key
-      const pubKeyHash = await crypto.subtle.digest('SHA-256', sigBytes)
-      const publicKey = new Uint8Array(pubKeyHash)
-      
-      // Hash for private key (different domain)
-      const combined = new Uint8Array(sigBytes.length + encoder.encode('private').length)
-      combined.set(sigBytes, 0)
-      combined.set(encoder.encode('private'), sigBytes.length)
-      const privKeyHash = await crypto.subtle.digest('SHA-256', combined)
-      const privateKey = new Uint8Array(privKeyHash)
+      // Use HKDF to derive both keys with different info strings for domain separation
+      // This is the industry standard approach (used in TLS 1.3, Signal Protocol, etc.)
+      const encoder = new TextEncoder()
+      const publicKey = hkdf(sha256, sigBytes, undefined, encoder.encode('r3mail-public-key-v1'), 32)
+      const privateKey = hkdf(sha256, sigBytes, undefined, encoder.encode('r3mail-private-key-v1'), 32)
 
       keys.value = {
         publicKey,
@@ -225,8 +297,11 @@ Purpose: Encryption Key Generation`
         address.value = accounts[0]
         isConnected.value = true
         
-        // Initialize client
-        initClient()
+        // Switch to Paseo Asset Hub network
+        await switchNetwork()
+        
+        // Initialize client and connect wallet
+        await initClient()
         
         // Derive keys
         await deriveKeys()
@@ -237,6 +312,41 @@ Purpose: Encryption Key Generation`
       return false
     } catch (err) {
       console.error('Failed to check connection:', err)
+      return false
+    }
+  }
+
+  /**
+   * Register public key on-chain
+   */
+  async function registerPublicKey() {
+    if (!keys.value || !chainClient.value) {
+      throw new Error('Keys not derived or client not initialized')
+    }
+
+    try {
+      console.log('Registering public key on-chain...')
+      const txHash = await chainClient.value.registerPublicKey(keys.value.publicKey)
+      console.log('Public key registered! Transaction:', txHash)
+      return txHash
+    } catch (err: any) {
+      error.value = err.message || 'Failed to register public key'
+      throw err
+    }
+  }
+
+  /**
+   * Check if current user has registered their public key
+   */
+  async function hasPublicKey(): Promise<boolean> {
+    if (!address.value || !chainClient.value) {
+      return false
+    }
+
+    try {
+      return await chainClient.value.hasPublicKey(address.value as `0x${string}`)
+    } catch (err) {
+      console.error('Error checking public key:', err)
       return false
     }
   }
@@ -255,5 +365,8 @@ Purpose: Encryption Key Generation`
     checkConnection,
     deriveKeys,
     initClient,
+    switchNetwork,
+    registerPublicKey,
+    hasPublicKey,
   }
 }

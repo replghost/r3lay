@@ -6,13 +6,15 @@
 
 /**
  * R3MAIL Mailbox contract address on Paseo Asset Hub
+ * Updated with public key registry support
  */
-export const R3MAIL_CONTRACT_ADDRESS = '0xABE4bEea70cA1F2A4B9a5eACcB9972E096B5d769' as const
+export const R3MAIL_CONTRACT_ADDRESS = '0x10c261B9647D93215e82207FaBb4Efb009c91c6F' as const
 
 /**
  * Paseo Asset Hub chain ID
+ * Actual chain ID returned by RPC (not the documented one)
  */
-export const PASEO_ASSET_HUB_CHAIN_ID = 420429638 as const
+export const PASEO_ASSET_HUB_CHAIN_ID = 420420422 as const
 
 /**
  * Paseo Asset Hub RPC URL

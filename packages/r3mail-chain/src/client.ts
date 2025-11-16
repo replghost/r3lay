@@ -160,6 +160,88 @@ export class R3mailChainClient {
   }
   
   /**
+   * Register your public key on-chain
+   * 
+   * @param publicKey - Your X25519 public key (32 bytes)
+   * @returns Transaction hash
+   */
+  async registerPublicKey(publicKey: Uint8Array): Promise<Hash> {
+    if (!this.walletClient) {
+      throw new Error('Wallet not connected')
+    }
+    
+    if (publicKey.length !== 32) {
+      throw new Error('Public key must be 32 bytes')
+    }
+    
+    const [from] = await this.walletClient.getAddresses()
+    
+    // Convert Uint8Array to bytes32
+    const publicKeyHex = `0x${Array.from(publicKey).map(b => b.toString(16).padStart(2, '0')).join('')}` as Hash
+    
+    // Send transaction
+    const hash = await this.walletClient.writeContract({
+      address: R3MAIL_CONTRACT_ADDRESS,
+      abi: mailboxAbi,
+      functionName: 'registerPublicKey',
+      args: [publicKeyHex],
+      account: from,
+    })
+    
+    // Wait for confirmation
+    await this.publicClient.waitForTransactionReceipt({ hash })
+    
+    return hash
+  }
+  
+  /**
+   * Get a user's registered public key
+   * 
+   * @param address - User address
+   * @returns Public key as Uint8Array, or null if not registered
+   */
+  async getPublicKey(address: Address): Promise<Uint8Array | null> {
+    try {
+      const publicKeyHex = await this.publicClient.readContract({
+        address: R3MAIL_CONTRACT_ADDRESS,
+        abi: mailboxAbi,
+        functionName: 'getPublicKey',
+        args: [address],
+      }) as Hash
+      
+      // Convert bytes32 to Uint8Array
+      const hex = publicKeyHex.slice(2) // Remove 0x
+      const bytes = new Uint8Array(32)
+      for (let i = 0; i < 32; i++) {
+        bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16)
+      }
+      
+      return bytes
+    } catch (error: any) {
+      // If PublicKeyNotRegistered error, return null
+      if (error.message?.includes('PublicKeyNotRegistered')) {
+        return null
+      }
+      throw error
+    }
+  }
+  
+  /**
+   * Check if a user has registered a public key
+   * 
+   * @param address - User address
+   * @returns True if user has registered a key
+   */
+  async hasPublicKey(address: Address): Promise<boolean> {
+    return await this.publicClient.readContract({
+      address: R3MAIL_CONTRACT_ADDRESS,
+      abi: mailboxAbi,
+      functionName: 'hasPublicKey',
+      args: [address],
+    })
+  }
+  
+  /**
    * Get historical messages for an address
    * 
    * @param address - Recipient address

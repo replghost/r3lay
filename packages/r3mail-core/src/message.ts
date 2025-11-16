@@ -4,7 +4,7 @@
  * Handles message encryption and decryption using ECDH + XChaCha20-Poly1305
  */
 
-import * as sodium from 'libsodium-wrappers'
+import _sodium from 'libsodium-wrappers'
 import {
   EncryptionError,
   DecryptionError,
@@ -19,14 +19,13 @@ import {
 import { canonicalEnvelopeJSON } from './envelope'
 
 // Initialize libsodium
-let sodiumReady: Promise<void> | null = null
+let sodiumReady: Promise<typeof _sodium> | null = null
 
 async function ensureSodium() {
   if (!sodiumReady) {
-    sodiumReady = sodium.ready
+    sodiumReady = _sodium.ready.then(() => _sodium)
   }
-  await sodiumReady
-  return sodium
+  return await sodiumReady
 }
 
 /**
@@ -59,15 +58,15 @@ async function generateNonce(): Promise<Uint8Array> {
 }
 
 /**
- * Compute SHA-256 hash
+ * Compute SHA-256 hash using Web Crypto API
  */
 async function sha256(data: Uint8Array | string): Promise<string> {
-  const lib = await ensureSodium()
   const bytes = typeof data === 'string' 
     ? new TextEncoder().encode(data)
     : data
-  const hash = lib.crypto_hash_sha256(bytes)
-  return '0x' + Buffer.from(hash).toString('hex')
+  const hashBuffer = await crypto.subtle.digest('SHA-256', bytes as BufferSource)
+  const hashArray = new Uint8Array(hashBuffer)
+  return '0x' + Array.from(hashArray).map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
 /**
@@ -119,7 +118,7 @@ async function wrapCEK(
   // Encrypt CEK with shared secret
   const wrappedCEK = lib.crypto_secretbox_easy(cek, nonce, sharedSecret)
   
-  return Buffer.from(wrappedCEK).toString('base64')
+  return lib.to_base64(wrappedCEK)
 }
 
 /**
@@ -148,15 +147,17 @@ async function unwrapCEK(
 /**
  * Base64 encode
  */
-function base64Encode(data: Uint8Array): string {
-  return Buffer.from(data).toString('base64')
+async function base64Encode(data: Uint8Array): Promise<string> {
+  const lib = await ensureSodium()
+  return lib.to_base64(data)
 }
 
 /**
  * Base64 decode
  */
-function base64Decode(data: string): Uint8Array {
-  return new Uint8Array(Buffer.from(data, 'base64'))
+async function base64Decode(data: string): Promise<Uint8Array> {
+  const lib = await ensureSodium()
+  return lib.from_base64(data)
 }
 
 /**
@@ -184,8 +185,9 @@ export async function createEncryptedMessage(
     // 2. Encrypt body with CEK
     const encryptedBody = await encryptBody(options.body, cek, nonce)
     
-    // 3. Derive recipient's public key
-    const recipientPublicKey = await derivePublicKeyFromAddress(options.to)
+    // 3. Get recipient's public key (use provided key or derive from address)
+    const recipientPublicKey = options.recipientPublicKey 
+      || await derivePublicKeyFromAddress(options.to)
     
     // 4. Wrap CEK with ECDH shared secret
     const wrappedCEK = await wrapCEK(cek, recipientPublicKey, options.senderPrivateKey, nonce)
@@ -206,7 +208,7 @@ export async function createEncryptedMessage(
       timestamp,
       subject: options.subject || '',
       cek: wrappedCEK, // Already base64 encoded from wrapCEK
-      nonce: base64Encode(nonce),
+      nonce: await base64Encode(nonce),
       bodyCid: '', // Will be filled after IPFS upload
       bodyHash,
       format: 'markdown',
@@ -243,8 +245,8 @@ export async function decryptMessage(
     const { envelope, encryptedBody, recipientPrivateKey } = options
     
     // 1. Decode nonce and wrapped CEK
-    const nonce = base64Decode(envelope.nonce)
-    const wrappedCEK = base64Decode(envelope.cek)
+    const nonce = await base64Decode(envelope.nonce)
+    const wrappedCEK = await base64Decode(envelope.cek)
     
     // 2. Derive sender's public key
     const senderPublicKey = await derivePublicKeyFromAddress(envelope.from)

@@ -40,13 +40,22 @@ export function useR3mailMessages() {
     error.value = ''
 
     try {
-      // 1. Encrypt message
+      // 1. Get recipient's public key from registry
+      console.log('Fetching recipient public key from registry...')
+      const recipientPublicKey = await wallet.chainClient.value.getPublicKey(to as `0x${string}`)
+      
+      if (!recipientPublicKey) {
+        throw new Error(`Recipient ${to} has not registered their public key yet. They need to register first.`)
+      }
+      
+      // 2. Encrypt message
       const { envelope, encryptedBody } = await createEncryptedMessage({
         from: wallet.address.value,
         to,
         subject,
         body,
         senderPrivateKey: wallet.keys.value.privateKey,
+        recipientPublicKey,
       })
 
       // 2. Upload encrypted body to IPFS

@@ -108,6 +108,9 @@ export interface CreateMessageOptions {
   
   /** Sender's private key */
   senderPrivateKey: Uint8Array
+  
+  /** Recipient's public key (optional - if not provided, will try to derive from address) */
+  recipientPublicKey?: Uint8Array
 }
 
 /**
