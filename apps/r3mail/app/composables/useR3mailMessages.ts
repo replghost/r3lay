@@ -6,6 +6,7 @@
 import { ref } from 'vue'
 import { createEncryptedMessage, decryptMessage, type MessageEnvelope } from '@r3mail/core'
 import { useR3mailWallet } from './useR3mailWallet'
+import { uploadJSON, uploadFile, fetchFromIPFS } from '~/utils/ipfs'
 
 export interface StoredMessage {
   msgId: string
@@ -49,17 +50,20 @@ export function useR3mailMessages() {
       })
 
       // 2. Upload encrypted body to IPFS
-      // TODO: Implement IPFS upload
-      const bodyCid = 'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi' // Placeholder
+      console.log('Uploading encrypted body to IPFS...')
+      const bodyBlob = new Blob([encryptedBody as any], { type: 'application/octet-stream' })
+      const bodyCid = await uploadFile(bodyBlob, `${envelope.msgId}-body`)
       envelope.bodyCid = bodyCid
+      console.log('Body uploaded:', bodyCid)
 
       // 3. Sign envelope
       // TODO: Implement envelope signing with wallet
       envelope.signature = '0x' + '0'.repeat(130) // Placeholder
 
       // 4. Upload envelope to IPFS
-      // TODO: Implement IPFS upload
-      const envelopeCid = 'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi' // Placeholder
+      console.log('Uploading envelope to IPFS...')
+      const envelopeCid = await uploadJSON(envelope, `${envelope.msgId}-envelope`)
+      console.log('Envelope uploaded:', envelopeCid)
 
       // 5. Notify on-chain
       const txHash = await wallet.chainClient.value.notifyMessage(
@@ -220,23 +224,40 @@ export function useR3mailMessages() {
 
     try {
       // 1. Fetch envelope from IPFS
-      // TODO: Implement IPFS fetch
       console.log('Fetching envelope:', event.envelopeCid)
+      const envelope = await fetchFromIPFS(event.envelopeCid) as MessageEnvelope
       
       // 2. Fetch encrypted body from IPFS
-      // TODO: Implement IPFS fetch
-      console.log('Fetching body...')
+      console.log('Fetching body from:', envelope.bodyCid)
+      const encryptedBodyData = await fetchFromIPFS(envelope.bodyCid)
+      
+      // Convert to Uint8Array if needed
+      let encryptedBody: Uint8Array
+      if (typeof encryptedBodyData === 'string') {
+        // If it's a string, convert from base64 or hex
+        const bytes = new TextEncoder().encode(encryptedBodyData)
+        encryptedBody = bytes
+      } else if (encryptedBodyData instanceof Uint8Array) {
+        encryptedBody = encryptedBodyData
+      } else {
+        throw new Error('Invalid encrypted body format')
+      }
       
       // 3. Decrypt message
-      // TODO: Implement decryption
+      console.log('Decrypting message...')
+      const decrypted = await decryptMessage({
+        envelope,
+        encryptedBody,
+        recipientPrivateKey: wallet.keys.value.privateKey
+      })
       
       // 4. Store in IndexedDB
       const message: StoredMessage = {
         msgId: event.msgId,
         from: event.from,
         to: event.to,
-        subject: '(encrypted)', // Will be from decrypted envelope
-        body: '(encrypted)', // Will be from decrypted body
+        subject: decrypted.subject,
+        body: decrypted.body,
         timestamp: Number(event.timestamp) * 1000,
         blockNumber: Number(event.blockNumber),
         unread: true,
@@ -245,6 +266,7 @@ export function useR3mailMessages() {
       }
       
       await storeMessage(message)
+      console.log('Message processed and stored!')
       
       return message
     } catch (err) {

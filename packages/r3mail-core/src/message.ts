@@ -45,50 +45,55 @@ export async function derivePublicKeyFromAddress(address: string): Promise<Uint8
 /**
  * Generate a random content encryption key (CEK)
  */
-function generateCEK(): Uint8Array {
-  return sodium.randombytes_buf(32) // 256-bit key
+async function generateCEK(): Promise<Uint8Array> {
+  const lib = await ensureSodium()
+  return lib.randombytes_buf(32) // 256-bit key
 }
 
 /**
  * Generate a random nonce for XChaCha20
  */
-function generateNonce(): Uint8Array {
-  return sodium.randombytes_buf(24) // 192-bit nonce
+async function generateNonce(): Promise<Uint8Array> {
+  const lib = await ensureSodium()
+  return lib.randombytes_buf(24) // 192-bit nonce
 }
 
 /**
  * Compute SHA-256 hash
  */
-function sha256(data: Uint8Array | string): string {
+async function sha256(data: Uint8Array | string): Promise<string> {
+  const lib = await ensureSodium()
   const bytes = typeof data === 'string' 
     ? new TextEncoder().encode(data)
     : data
-  const hash = sodium.crypto_hash_sha256(bytes)
+  const hash = lib.crypto_hash_sha256(bytes)
   return '0x' + Buffer.from(hash).toString('hex')
 }
 
 /**
  * Compute keccak256 hash (for message ID)
  */
-function keccak256(data: string): string {
+async function keccak256(data: string): Promise<string> {
   // For now, use SHA-256 as fallback
   // In production, use proper keccak256 from ethers or viem
-  return sha256(data)
+  return await sha256(data)
 }
 
 /**
  * Encrypt message body with CEK using XChaCha20-Poly1305
  */
-function encryptBody(plaintext: string, cek: Uint8Array, nonce: Uint8Array): Uint8Array {
+async function encryptBody(plaintext: string, cek: Uint8Array, nonce: Uint8Array): Promise<Uint8Array> {
+  const lib = await ensureSodium()
   const plaintextBytes = new TextEncoder().encode(plaintext)
-  return sodium.crypto_secretbox_easy(plaintextBytes, nonce, cek)
+  return lib.crypto_secretbox_easy(plaintextBytes, nonce, cek)
 }
 
 /**
  * Decrypt message body with CEK
  */
-function decryptBody(ciphertext: Uint8Array, cek: Uint8Array, nonce: Uint8Array): string {
-  const plaintextBytes = sodium.crypto_secretbox_open_easy(ciphertext, nonce, cek)
+async function decryptBody(ciphertext: Uint8Array, cek: Uint8Array, nonce: Uint8Array): Promise<string> {
+  const lib = await ensureSodium()
+  const plaintextBytes = lib.crypto_secretbox_open_easy(ciphertext, nonce, cek)
   return new TextDecoder().decode(plaintextBytes)
 }
 
@@ -101,17 +106,20 @@ function decryptBody(ciphertext: Uint8Array, cek: Uint8Array, nonce: Uint8Array)
  * @param nonce - Nonce for encryption
  * @returns Wrapped CEK
  */
-function wrapCEK(
+async function wrapCEK(
   cek: Uint8Array,
   recipientPublicKey: Uint8Array,
   senderPrivateKey: Uint8Array,
   nonce: Uint8Array
-): Uint8Array {
+): Promise<string> {
+  const lib = await ensureSodium()
   // Compute ECDH shared secret
-  const sharedSecret = sodium.crypto_box_beforenm(recipientPublicKey, senderPrivateKey)
+  const sharedSecret = lib.crypto_scalarmult(senderPrivateKey, recipientPublicKey)
   
   // Encrypt CEK with shared secret
-  return sodium.crypto_secretbox_easy(cek, nonce, sharedSecret)
+  const wrappedCEK = lib.crypto_secretbox_easy(cek, nonce, sharedSecret)
+  
+  return Buffer.from(wrappedCEK).toString('base64')
 }
 
 /**
@@ -123,17 +131,18 @@ function wrapCEK(
  * @param nonce - Nonce used for encryption
  * @returns Unwrapped CEK
  */
-function unwrapCEK(
+async function unwrapCEK(
   wrappedCEK: Uint8Array,
   senderPublicKey: Uint8Array,
   recipientPrivateKey: Uint8Array,
   nonce: Uint8Array
-): Uint8Array {
+): Promise<Uint8Array> {
+  const lib = await ensureSodium()
   // Compute ECDH shared secret
-  const sharedSecret = sodium.crypto_box_beforenm(senderPublicKey, recipientPrivateKey)
+  const sharedSecret = lib.crypto_box_beforenm(senderPublicKey, recipientPrivateKey)
   
   // Decrypt CEK
-  return sodium.crypto_secretbox_open_easy(wrappedCEK, nonce, sharedSecret)
+  return lib.crypto_secretbox_open_easy(wrappedCEK, nonce, sharedSecret)
 }
 
 /**
@@ -169,24 +178,24 @@ export async function createEncryptedMessage(
     }
     
     // 1. Generate random CEK and nonce
-    const cek = generateCEK()
-    const nonce = generateNonce()
+    const cek = await generateCEK()
+    const nonce = await generateNonce()
     
     // 2. Encrypt body with CEK
-    const encryptedBody = encryptBody(options.body, cek, nonce)
+    const encryptedBody = await encryptBody(options.body, cek, nonce)
     
     // 3. Derive recipient's public key
     const recipientPublicKey = await derivePublicKeyFromAddress(options.to)
     
     // 4. Wrap CEK with ECDH shared secret
-    const wrappedCEK = wrapCEK(cek, recipientPublicKey, options.senderPrivateKey, nonce)
+    const wrappedCEK = await wrapCEK(cek, recipientPublicKey, options.senderPrivateKey, nonce)
     
     // 5. Compute body hash
-    const bodyHash = sha256(options.body)
+    const bodyHash = await sha256(options.body)
     
     // 6. Generate message ID (will be updated with bodyCid later)
     const timestamp = Date.now()
-    const msgId = keccak256(`${options.from}${options.to}${timestamp}`)
+    const msgId = await keccak256(`${options.from}${options.to}${timestamp}`)
     
     // 7. Create envelope (without signature and bodyCid for now)
     const envelopeWithoutSig: Omit<MessageEnvelope, 'signature' | 'bodyCid'> & { bodyCid: string } = {
@@ -196,7 +205,7 @@ export async function createEncryptedMessage(
       to: options.to,
       timestamp,
       subject: options.subject || '',
-      cek: base64Encode(wrappedCEK),
+      cek: wrappedCEK, // Already base64 encoded from wrapCEK
       nonce: base64Encode(nonce),
       bodyCid: '', // Will be filled after IPFS upload
       bodyHash,
@@ -241,13 +250,13 @@ export async function decryptMessage(
     const senderPublicKey = await derivePublicKeyFromAddress(envelope.from)
     
     // 3. Unwrap CEK
-    const cek = unwrapCEK(wrappedCEK, senderPublicKey, recipientPrivateKey, nonce)
+    const cek = await unwrapCEK(wrappedCEK, senderPublicKey, recipientPrivateKey, nonce)
     
     // 4. Decrypt body
-    const plaintext = decryptBody(encryptedBody, cek, nonce)
+    const plaintext = await decryptBody(encryptedBody, cek, nonce)
     
     // 5. Verify body hash
-    const computedHash = sha256(plaintext)
+    const computedHash = await sha256(plaintext)
     if (computedHash !== envelope.bodyHash) {
       throw new DecryptionError('Body hash mismatch - message may be corrupted')
     }
