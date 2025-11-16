@@ -124,6 +124,10 @@
               <h2 class="text-xl font-bold flex-1">{{ selectedMessage.subject || '(no subject)' }}</h2>
               <!-- Actions -->
               <div class="flex gap-2">
+                <Button variant="default" size="sm" @click="handleReply(selectedMessage)">
+                  <Icon name="lucide:reply" class="mr-2 h-4 w-4" />
+                  Reply
+                </Button>
                 <Button variant="ghost" size="sm" @click="handleArchive(selectedMessage.msgId)">
                   <Icon name="lucide:archive" class="h-4 w-4" />
                 </Button>
@@ -402,6 +406,21 @@ function getPreview(body: string): string {
     .trim()
   
   return plain.length > 100 ? plain.slice(0, 100) + '...' : plain
+}
+
+function handleReply(message: StoredMessage) {
+  // Navigate to compose page with pre-filled recipient and subject
+  const subject = message.subject.startsWith('Re: ') 
+    ? message.subject 
+    : `Re: ${message.subject}`
+  
+  router.push({
+    path: '/compose',
+    query: {
+      to: message.from,
+      subject: subject
+    }
+  })
 }
 
 function handleOnboardingComplete() {

@@ -243,8 +243,17 @@ async function sendMessage() {
       router.push('/inbox')
     }, 1500)
   } catch (err: any) {
-    sendError.value = err.message || 'Failed to send message'
-    error.value = sendError.value
+    // Make error messages more user-friendly
+    let errorMsg = err.message || 'Failed to send message'
+    
+    if (errorMsg.includes('User rejected') || errorMsg.includes('user rejected') || errorMsg.includes('User denied')) {
+      errorMsg = 'You cancelled the signature request. Please try again.'
+    } else if (errorMsg.includes('not been authorized')) {
+      errorMsg = 'Signature request was rejected. Please try again and approve the request in MetaMask.'
+    }
+    
+    sendError.value = errorMsg
+    error.value = errorMsg
   } finally {
     sending.value = false
   }

@@ -1,12 +1,28 @@
 # R3LAY
 
-**Encrypted, Unstoppable, Decentralized Publishing**
+**Encrypted, Unstoppable, Decentralized Communication**
 
-R3LAY is an end-to-end encrypted publishing protocol that combines:
-- **Polkadot (Paseo Asset Hub EVM)** for channel registry & event indexing
+R3LAY is a monorepo containing end-to-end encrypted decentralized applications:
+
+## 📬 R3MAIL - Encrypted Email
+End-to-end encrypted messaging on the blockchain. Send private messages using Ethereum addresses with full cryptographic verification.
+
+**Features:**
+- ✅ **E2E Encryption** - X25519 key exchange + XSalsa20-Poly1305
+- ✅ **Dual Signatures** - Envelope signing (EIP-191) + on-chain transaction
+- ✅ **IPFS Storage** - Encrypted message content stored on IPFS
+- ✅ **Blockchain Notifications** - Message events recorded on Paseo Asset Hub
+- ✅ **Modern UI** - 3-column inbox with message preview
+- ✅ **Markdown Support** - Rich text formatting in messages
+
+## 📡 R3LAY - Encrypted Publishing (In Development)
+Decentralized publishing protocol for private content distribution.
+
+**Technology Stack:**
+- **Polkadot (Paseo Asset Hub EVM)** for registry & event indexing
 - **IPFS** for encrypted content storage
 - **X25519 E2EE** for cryptographic access control
-- **Nuxt/Vue 3** for the client application
+- **Nuxt/Vue 3** for client applications
 
 ## Overview
 
@@ -40,13 +56,16 @@ Follower → Query Chain → Download IPFS → Decrypt
 ```
 r3lay/
 ├── apps/
-│   └── r3lay/              # Nuxt client app
+│   ├── r3mail/             # R3MAIL encrypted messaging app
+│   └── r3lay/              # R3LAY publishing app (in development)
 ├── packages/
-│   ├── r3lay-core/         # Core types, utils, constants
+│   ├── r3mail-core/        # R3MAIL core encryption & messaging
+│   ├── r3lay-core/         # R3LAY core types & utils
 │   ├── r3lay-chain/        # Chain interaction layer
 │   └── r3lay-ipfs/         # IPFS client abstraction
 ├── contracts/
-│   └── r3lay-channel-registry/  # Smart contract
+│   ├── r3mail-registry/    # R3MAIL public key registry
+│   └── r3lay-channel-registry/  # R3LAY channel registry
 └── docs/                   # Documentation
 ```
 
@@ -83,6 +102,7 @@ r3lay/
 
 - Bun or Node.js 20+
 - Foundry (for smart contracts)
+- MetaMask or compatible Web3 wallet
 
 ### Install Dependencies
 
@@ -90,7 +110,16 @@ r3lay/
 bun install
 ```
 
-### Run Client App
+### Run R3MAIL App
+
+```bash
+cd apps/r3mail
+bun run dev
+```
+
+Open http://localhost:3000 and connect your wallet to start sending encrypted messages!
+
+### Run R3LAY App (In Development)
 
 ```bash
 cd apps/r3lay
