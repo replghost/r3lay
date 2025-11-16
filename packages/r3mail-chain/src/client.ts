@@ -254,18 +254,22 @@ export class R3mailChainClient {
     fromBlock: bigint = 0n,
     toBlock: bigint | 'latest' = 'latest'
   ): Promise<MessageNotifiedEvent[]> {
+    // RPC doesn't support indexed address params, so fetch all events and filter client-side
     const logs = await this.publicClient.getContractEvents({
       address: R3MAIL_CONTRACT_ADDRESS,
       abi: mailboxAbi,
       eventName: 'MessageNotified',
-      args: {
-        to: address,
-      },
+      // Don't filter by 'to' address in the query - RPC doesn't support it
       fromBlock,
       toBlock,
     })
     
-    return logs.map(log => this.parseMessageEvent(log))
+    // Filter client-side for the recipient address
+    const filtered = logs.filter((log: any) => {
+      return log.args.to?.toLowerCase() === address.toLowerCase()
+    })
+    
+    return filtered.map(log => this.parseMessageEvent(log))
   }
   
   /**

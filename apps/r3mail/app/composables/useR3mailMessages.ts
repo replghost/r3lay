@@ -75,6 +75,7 @@ export function useR3mailMessages() {
       console.log('Envelope uploaded:', envelopeCid)
 
       // 5. Notify on-chain
+      console.log('Notifying chain with CID:', envelopeCid, 'length:', envelopeCid.length)
       const txHash = await wallet.chainClient.value.notifyMessage(
         envelope.msgId as `0x${string}`,
         to as `0x${string}`,
@@ -82,6 +83,7 @@ export function useR3mailMessages() {
       )
 
       console.log('Message sent! Transaction:', txHash)
+      console.log('Envelope CID sent to chain:', envelopeCid)
 
       return {
         msgId: envelope.msgId,
@@ -285,6 +287,122 @@ export function useR3mailMessages() {
   }
 
   /**
+   * Fetch messages from chain (historical events)
+   */
+  async function fetchFromChain() {
+    if (!wallet.address.value || !wallet.chainClient.value) {
+      throw new Error('Wallet not connected')
+    }
+
+    loading.value = true
+    try {
+      console.log('Fetching messages from chain...')
+      
+      // Get historical MessageNotified events
+      const events = await wallet.chainClient.value.getMessages(
+        wallet.address.value as `0x${string}`
+      )
+      
+      console.log(`Found ${events.length} events on chain`)
+      
+      // Log event details for debugging
+      events.forEach((event, i) => {
+        console.log(`Event ${i}:`, {
+          msgId: event.msgId,
+          from: event.from,
+          to: event.to,
+          envelopeCid: event.envelopeCid,
+          cidLength: event.envelopeCid.length
+        })
+      })
+      
+      // Process each event
+      for (const event of events) {
+        try {
+          // Check if we already have this message
+          const existing = await getMessage(event.msgId)
+          if (existing) {
+            console.log('Message already exists:', event.msgId)
+            continue
+          }
+          
+          // Store a placeholder message immediately so it shows up
+          const placeholder: StoredMessage = {
+            msgId: event.msgId,
+            from: event.from,
+            to: event.to,
+            subject: '⏳ Loading...',
+            body: 'Fetching message from IPFS...',
+            timestamp: Number(event.timestamp) * 1000,
+            blockNumber: Number(event.blockNumber),
+            unread: true,
+            archived: false,
+            envelopeCid: event.envelopeCid,
+          }
+          
+          await storeMessage(placeholder)
+          console.log('📬 New message found:', event.msgId)
+          
+          // Try to process and decrypt in background
+          try {
+            await processMessageEvent(event)
+            console.log('✅ Message decrypted:', event.msgId)
+          } catch (err) {
+            console.error('❌ Failed to decrypt message:', event.msgId, err)
+            // Update with error message
+            placeholder.subject = '⚠️ Failed to load'
+            placeholder.body = `Could not fetch or decrypt message. CID: ${event.envelopeCid}`
+            await storeMessage(placeholder)
+          }
+        } catch (err) {
+          console.error('Failed to process event:', event.msgId, err)
+        }
+      }
+      
+      // Reload messages from IndexedDB
+      await loadMessages()
+      
+      console.log('✅ Chain sync complete!')
+    } catch (err: any) {
+      error.value = err.message || 'Failed to fetch from chain'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Start background sync (polls every 30 seconds)
+   */
+  function startBackgroundSync() {
+    if (!wallet.address.value || !wallet.chainClient.value) {
+      throw new Error('Wallet not connected')
+    }
+
+    console.log('🔄 Starting background message sync...')
+    
+    // Initial sync
+    fetchFromChain().catch(err => {
+      console.error('Initial sync failed:', err)
+    })
+    
+    // Poll every 30 seconds
+    const intervalId = setInterval(async () => {
+      try {
+        await fetchFromChain()
+      } catch (err) {
+        console.error('Background sync error:', err)
+      }
+    }, 30000)
+    
+    // Return cleanup function
+    return () => {
+      console.log('🛑 Stopping background sync')
+      clearInterval(intervalId)
+    }
+  }
+
+  /**
    * Watch inbox for new messages
    */
   function watchInbox(onMessage: (message: StoredMessage) => void) {
@@ -318,6 +436,8 @@ export function useR3mailMessages() {
     // Methods
     sendMessage,
     loadMessages,
+    fetchFromChain,
+    startBackgroundSync,
     storeMessage,
     getMessage,
     markAsRead,

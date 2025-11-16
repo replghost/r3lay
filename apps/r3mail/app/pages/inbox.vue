@@ -126,8 +126,8 @@ const unreadCount = computed(() => {
   return messageStore.messages.value.filter(m => m.unread).length
 })
 
-// Event watching
-let unwatchInbox: (() => void) | null = null
+// Background sync
+let stopBackgroundSync: (() => void) | null = null
 
 // Lifecycle
 onMounted(async () => {
@@ -138,13 +138,16 @@ onMounted(async () => {
     await loadMessages()
     // Check if public key is registered
     isKeyRegistered.value = await wallet.hasPublicKey()
-    // TODO: Fix event watching - RPC doesn't support indexed address params
-    // startWatchingInbox()
+    // Start background sync (polls every 30 seconds)
+    stopBackgroundSync = messageStore.startBackgroundSync()
   }
 })
 
 onUnmounted(() => {
-  // stopWatchingInbox()
+  // Stop background sync
+  if (stopBackgroundSync) {
+    stopBackgroundSync()
+  }
 })
 
 // Methods
@@ -168,8 +171,14 @@ async function loadMessages() {
 }
 
 async function refreshMessages() {
-  await loadMessages()
-  // TODO: Fetch new messages from chain
+  try {
+    // Fetch new messages from chain
+    await messageStore.fetchFromChain()
+  } catch (err) {
+    console.error('Failed to refresh from chain:', err)
+    // Fallback to loading from IndexedDB
+    await loadMessages()
+  }
 }
 
 async function registerKey() {
@@ -198,23 +207,6 @@ function openMessage(message: StoredMessage) {
   router.push(`/message/${message.msgId}`)
 }
 
-function startWatchingInbox() {
-  try {
-    unwatchInbox = messageStore.watchInbox((message) => {
-      console.log('New message received:', message)
-      // Message is automatically added to store
-    })
-  } catch (err) {
-    console.error('Failed to start watching inbox:', err)
-  }
-}
-
-function stopWatchingInbox() {
-  if (unwatchInbox) {
-    unwatchInbox()
-    unwatchInbox = null
-  }
-}
 </script>
 
 <style scoped>

@@ -68,5 +68,11 @@ export default defineNuxtConfig({
     ],
   },
 
+  runtimeConfig: {
+    public: {
+      pinataJwt: process.env.NUXT_PUBLIC_PINATA_JWT || '',
+    },
+  },
+
   compatibilityDate: '2024-12-14',
 })

@@ -11,14 +11,18 @@ let pinata: PinataSDK | null = null
 
 function getPinataClient() {
   if (!pinata) {
-    // Using public Pinata gateway for demo
-    // In production, set NUXT_PUBLIC_PINATA_JWT in .env
-    const jwt = import.meta.env.NUXT_PUBLIC_PINATA_JWT || ''
+    // Get JWT from runtime config (Nuxt 3)
+    // Set NUXT_PUBLIC_PINATA_JWT in .env
+    const config = useRuntimeConfig()
+    const jwt = config.public.pinataJwt || ''
+    
+    console.log('🔑 Pinata JWT configured:', jwt ? 'YES ✅' : 'NO ❌')
     
     if (jwt) {
       pinata = new PinataSDK({
         pinataJwt: jwt,
       })
+      console.log('✅ Pinata client initialized')
     }
   }
   return pinata
@@ -31,13 +35,19 @@ export async function uploadJSON(data: any, name?: string): Promise<string> {
   const client = getPinataClient()
   
   if (!client) {
-    // Fallback: Use public IPFS gateway (read-only for demo)
-    console.warn('No Pinata JWT configured, using mock CID')
-    // Generate a mock CID for demo purposes
-    const mockCid = `Qm${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`
+    // Fallback: Use localStorage for demo (no real IPFS)
+    console.warn('⚠️ No Pinata JWT configured! Using localStorage fallback.')
+    console.warn('Set NUXT_PUBLIC_PINATA_JWT in .env for real IPFS uploads')
+    
+    // Generate a proper-length mock CID (46 chars like real CIDs)
+    const randomPart = Array.from({ length: 44 }, () => 
+      Math.random().toString(36)[2] || '0'
+    ).join('')
+    const mockCid = `Qm${randomPart}`
     
     // Store in localStorage as fallback
     localStorage.setItem(`ipfs_${mockCid}`, JSON.stringify(data))
+    console.log('📦 Stored in localStorage with mock CID:', mockCid)
     return mockCid
   }
 
@@ -62,16 +72,22 @@ export async function uploadFile(data: Blob | File, name?: string): Promise<stri
   const client = getPinataClient()
   
   if (!client) {
-    console.warn('No Pinata JWT configured, using mock CID')
-    const mockCid = `Qm${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`
+    console.warn('⚠️ No Pinata JWT configured! Using localStorage fallback.')
+    
+    // Generate a proper-length mock CID (46 chars like real CIDs)
+    const randomPart = Array.from({ length: 44 }, () => 
+      Math.random().toString(36)[2] || '0'
+    ).join('')
+    const mockCid = `Qm${randomPart}`
     
     // Store in localStorage as fallback
     const reader = new FileReader()
     const content = await new Promise<string>((resolve) => {
       reader.onload = () => resolve(reader.result as string)
-      reader.readAsText(data)
+      reader.readAsDataURL(data) // Use dataURL to preserve binary
     })
     localStorage.setItem(`ipfs_${mockCid}`, content)
+    console.log('📦 Stored file in localStorage with mock CID:', mockCid)
     return mockCid
   }
 
@@ -90,17 +106,31 @@ export async function uploadFile(data: Blob | File, name?: string): Promise<stri
  * Fetch data from IPFS by CID
  */
 export async function fetchFromIPFS(cid: string): Promise<any> {
-  // First check localStorage fallback
+  // Check localStorage first (for mock CIDs)
   const localData = localStorage.getItem(`ipfs_${cid}`)
   if (localData) {
+    console.log('📦 Retrieved from localStorage:', cid)
     try {
+      // Try to parse as JSON first
       return JSON.parse(localData)
     } catch {
+      // If not JSON, check if it's a data URL
+      if (localData.startsWith('data:')) {
+        // Convert data URL back to Uint8Array
+        const parts = localData.split(',')
+        if (parts[1]) {
+          const binary = atob(parts[1])
+          const bytes = new Uint8Array(binary.length)
+          for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i)
+          }
+          return bytes
+        }
+      }
       return localData
     }
   }
-
-  // Try public IPFS gateways
+  
   const gateways = [
     `https://gateway.pinata.cloud/ipfs/${cid}`,
     `https://ipfs.io/ipfs/${cid}`,
