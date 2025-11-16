@@ -82,6 +82,21 @@
                 Share this public key with creators so they can encrypt posts for you
               </p>
             </div>
+
+            <div class="pt-4 border-t">
+              <Button 
+                @click="clearIdentity" 
+                variant="destructive"
+                size="sm"
+                class="w-full"
+              >
+                <Icon name="lucide:trash-2" class="mr-2 h-4 w-4" />
+                Clear Identity & Use Wallet Keys
+              </Button>
+              <p class="text-xs text-muted-foreground mt-2 text-center">
+                This will delete your current keys. You can then use wallet-based keys instead.
+              </p>
+            </div>
           </div>
 
           <div v-if="error" class="p-3 bg-destructive/10 border border-destructive rounded-lg">
@@ -305,6 +320,49 @@ const initFollowerFromWalletClick = async () => {
   } finally {
     loading.value = false
   }
+}
+
+// Clear identity
+const clearIdentity = async () => {
+  if (!confirm('Are you sure you want to delete your current identity? This cannot be undone.')) {
+    return
+  }
+  
+  loading.value = true
+  error.value = ''
+  
+  try {
+    // Clear from IndexedDB
+    const db = await openDB()
+    const transaction = db.transaction(['follower_keys'], 'readwrite')
+    const store = transaction.objectStore('follower_keys')
+    await new Promise<void>((resolve, reject) => {
+      const request = store.delete('identity')
+      request.onsuccess = () => resolve()
+      request.onerror = () => reject(request.error)
+    })
+    
+    // Reset state
+    hasIdentity.value = false
+    publicKey.value = ''
+    
+    // Show success message briefly
+    error.value = ''
+    console.log('Identity cleared successfully')
+  } catch (e: any) {
+    error.value = e.message || 'Failed to clear identity'
+  } finally {
+    loading.value = false
+  }
+}
+
+// Helper to open IndexedDB
+const openDB = (): Promise<IDBDatabase> => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('r3lay_keystore', 1)
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(request.error)
+  })
 }
 
 // Copy public key

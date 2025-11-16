@@ -15,6 +15,12 @@ export default defineNuxtConfig({
     'shadcn-nuxt'
   ],
 
+  icon: {
+    serverBundle: {
+      collections: ['lucide']
+    }
+  },
+
   css: ['~/assets/css/tailwind.css'],
 
   shadcn: {

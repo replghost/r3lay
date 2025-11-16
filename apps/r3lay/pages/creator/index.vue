@@ -18,14 +18,25 @@
             <CardTitle>Identity</CardTitle>
           </CardHeader>
           <CardContent>
-            <div v-if="hasCreatorIdentity" class="space-y-2">
-              <div class="flex items-center gap-2">
-                <div class="h-2 w-2 rounded-full bg-green-500" />
-                <span class="text-sm">Active</span>
+            <div v-if="hasCreatorIdentity" class="space-y-3">
+              <div>
+                <div class="flex items-center gap-2">
+                  <div class="h-2 w-2 rounded-full bg-green-500" />
+                  <span class="text-sm">Active</span>
+                </div>
+                <p class="text-xs text-muted-foreground font-mono mt-1">
+                  {{ truncatedPubkey }}
+                </p>
               </div>
-              <p class="text-xs text-muted-foreground font-mono">
-                {{ truncatedPubkey }}
-              </p>
+              <Button 
+                @click="clearCreatorIdentity" 
+                variant="ghost"
+                size="sm"
+                class="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+              >
+                <Icon name="lucide:trash-2" class="mr-2 h-3 w-3" />
+                Clear & Use Wallet Keys
+              </Button>
             </div>
             <div v-else class="space-y-2">
               <p class="text-xs text-muted-foreground mb-3">Choose initialization method:</p>
@@ -250,6 +261,38 @@ const initCreatorFromWalletClick = async () => {
     } else {
       alert(`Failed to derive keys: ${error.message || error}`)
     }
+  }
+}
+
+const clearCreatorIdentity = async () => {
+  if (!confirm('Are you sure you want to delete your current identity? This cannot be undone.')) {
+    return
+  }
+  
+  try {
+    // Clear from IndexedDB
+    const request = indexedDB.open('r3lay_keystore', 1)
+    request.onsuccess = () => {
+      const db = request.result
+      const transaction = db.transaction(['creator_keys'], 'readwrite')
+      const store = transaction.objectStore('creator_keys')
+      const deleteRequest = store.delete('identity')
+      
+      deleteRequest.onsuccess = () => {
+        // Force reload to reset state
+        window.location.reload()
+      }
+      
+      deleteRequest.onerror = () => {
+        alert('Failed to clear identity')
+      }
+    }
+    
+    request.onerror = () => {
+      alert('Failed to open database')
+    }
+  } catch (e: any) {
+    alert(e.message || 'Failed to clear identity')
   }
 }
 

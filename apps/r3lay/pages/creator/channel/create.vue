@@ -25,7 +25,7 @@
             <Icon v-if="currentStep > index" name="lucide:check" class="h-4 w-4" />
             <span v-else class="text-sm">{{ index + 1 }}</span>
           </div>
-          <div v-if="index < steps.length - 1" class="w-16 h-0.5 mx-2" :class="currentStep > index ? 'bg-primary' : 'bg-muted'" />
+          <div v-if="index < steps.length - 1" class="w-24 h-0.5 mx-2" :class="currentStep > index ? 'bg-primary' : 'bg-muted'" />
         </div>
       </div>
 
@@ -35,31 +35,8 @@
           <CardTitle>{{ steps[currentStep] }}</CardTitle>
         </CardHeader>
         <CardContent class="space-y-6">
-          <!-- Step 1: Identity -->
+          <!-- Step 1: Channel Info -->
           <div v-if="currentStep === 0" class="space-y-4">
-            <div v-if="!hasCreatorIdentity">
-              <p class="text-sm text-muted-foreground mb-4">
-                First, we'll generate your encryption keys. These keys will be stored securely in your browser.
-              </p>
-              <Button @click="generateKeys" :disabled="loading">
-                <Icon v-if="loading" name="lucide:loader-2" class="mr-2 h-4 w-4 animate-spin" />
-                Generate Keys
-              </Button>
-            </div>
-            <div v-else class="space-y-4">
-              <div class="flex items-center gap-2 text-green-600">
-                <Icon name="lucide:check-circle" class="h-5 w-5" />
-                <span class="font-medium">Keys generated successfully</span>
-              </div>
-              <div class="p-4 bg-muted rounded-lg">
-                <p class="text-xs text-muted-foreground mb-2">Your Public Key:</p>
-                <code class="text-xs break-all">{{ publicKey }}</code>
-              </div>
-            </div>
-          </div>
-
-          <!-- Step 2: Channel Info -->
-          <div v-if="currentStep === 1" class="space-y-4">
             <div class="space-y-2">
               <Label for="channel-name">Channel Name</Label>
               <Input 
@@ -80,8 +57,8 @@
             </div>
           </div>
 
-          <!-- Step 3: Wallet Connection -->
-          <div v-if="currentStep === 2" class="space-y-4">
+          <!-- Step 2: Wallet Connection -->
+          <div v-if="currentStep === 1" class="space-y-4">
             <div v-if="!isConnected">
               <p class="text-sm text-muted-foreground mb-4">
                 Connect your wallet to register the channel on-chain.
@@ -104,8 +81,8 @@
             </div>
           </div>
 
-          <!-- Step 4: Create Channel -->
-          <div v-if="currentStep === 3" class="space-y-4">
+          <!-- Step 3: Create Channel -->
+          <div v-if="currentStep === 2" class="space-y-4">
             <div v-if="!channelCreated">
               <p class="text-sm text-muted-foreground mb-4">
                 Ready to create your channel! This will:
@@ -165,12 +142,20 @@
           <div v-else />
           
           <Button 
-            v-if="currentStep < 3 && canProceed" 
+            v-if="currentStep < 2 && canProceed" 
             @click="currentStep++"
             :disabled="loading"
           >
             Next
             <Icon name="lucide:arrow-right" class="ml-2 h-4 w-4" />
+          </Button>
+          <Button 
+            v-if="currentStep === 2 && !channelCreated" 
+            @click="createChannel"
+            :disabled="loading"
+          >
+            <Icon v-if="loading" name="lucide:loader-2" class="mr-2 h-4 w-4 animate-spin" />
+            Create Channel
           </Button>
           <NuxtLink v-if="channelCreated" to="/creator">
             <Button>
@@ -185,7 +170,7 @@
 </template>
 
 <script setup lang="ts">
-const { hasCreatorIdentity, initializeCreator, getCreatorPublicKey } = useR3layCore()
+const { hasCreatorIdentity, getCreatorPublicKey } = useR3layCore()
 const { isConnected, walletAddress, connectWallet: connectWalletFn, createChannel: createChannelFn, getChannel } = useR3layChain()
 const { uploadFeedIndex } = useR3layIPFS()
 
@@ -201,7 +186,6 @@ const channelId = ref('')
 const txHash = ref('')
 
 const steps = [
-  'Generate Keys',
   'Channel Info',
   'Connect Wallet',
   'Create Channel'
@@ -209,27 +193,24 @@ const steps = [
 
 // Computed
 const canProceed = computed(() => {
-  if (currentStep.value === 0) return hasCreatorIdentity.value
-  if (currentStep.value === 1) return channelName.value.trim().length > 0
-  if (currentStep.value === 2) return isConnected.value
+  if (currentStep.value === 0) return channelName.value.trim().length > 0
+  if (currentStep.value === 1) return isConnected.value
   return false
 })
 
-// Actions
-const generateKeys = async () => {
-  loading.value = true
-  error.value = ''
-  
-  try {
-    await initializeCreator()
+// Check identity on mount
+onMounted(async () => {
+  if (!hasCreatorIdentity.value) {
+    error.value = 'Please initialize your identity first from the dashboard'
+    setTimeout(() => {
+      navigateTo('/creator')
+    }, 2000)
+  } else {
     publicKey.value = await getCreatorPublicKey() || ''
-  } catch (e: any) {
-    error.value = e.message || 'Failed to generate keys'
-  } finally {
-    loading.value = false
   }
-}
+})
 
+// Actions
 const connectWallet = async () => {
   loading.value = true
   error.value = ''
@@ -255,9 +236,10 @@ const createChannel = async () => {
   
   try {
     console.log('Step 1: Deriving channel ID...')
-    // 1. Derive channel ID from wallet address
-    const { deriveChannelIdFromAddress } = await import('../../../packages/r3lay-core/src/utils/index.ts')
-    const derivedChannelId = deriveChannelIdFromAddress(walletAddress.value!)
+    // 1. Derive channel ID from wallet address (pad to 32 bytes)
+    const cleanAddress = walletAddress.value!.toLowerCase().replace(/^0x/, '')
+    const paddedAddress = cleanAddress.padStart(64, '0')
+    const derivedChannelId = `0x${paddedAddress}`
     channelId.value = derivedChannelId
     console.log('Channel ID:', derivedChannelId)
     

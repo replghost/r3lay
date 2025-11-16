@@ -183,14 +183,14 @@ const copyAddress = async () => {
 const handleSwitchNetwork = async () => {
   try {
     // Try to switch first
-    await switchNetwork(420420422)
+    await switchNetwork(420429638)
     showMenu.value = false
   } catch (switchError: any) {
     // If network doesn't exist (error code 4902), try to add it
     if (switchError.code === 4902) {
       try {
         await addNetwork({
-          chainId: 420420422,
+          chainId: 420429638,
           chainName: 'Passet Hub',
           rpcUrls: ['https://testnet-passet-hub-eth-rpc.polkadot.io'],
           nativeCurrency: {
@@ -202,16 +202,32 @@ const handleSwitchNetwork = async () => {
         })
         showMenu.value = false
       } catch (addError: any) {
+        // Check if it's just a duplicate network error (already exists)
+        if (addError.code === -32603 || addError.message?.includes('already exists')) {
+          console.log('Network already exists, trying to switch again')
+          try {
+            await switchNetwork(420429638)
+            showMenu.value = false
+            return
+          } catch (e) {
+            // Ignore, will show manual message below
+          }
+        }
         console.error('Failed to add network:', addError)
-        // Show user-friendly message
-        alert('Please add Passet Hub network manually:\n\nNetwork Name: Passet Hub\nRPC URL: https://testnet-passet-hub-eth-rpc.polkadot.io\nChain ID: 420420422\nCurrency: PAS')
+        // Show user-friendly message only for real errors
+        if (addError.code !== 4001) {
+          alert('Please add Passet Hub network manually:\n\nNetwork Name: Passet Hub\nRPC URL: https://testnet-passet-hub-eth-rpc.polkadot.io\nChain ID: 420429638\nCurrency: PAS')
+        }
       }
     } else if (switchError.code === 4001) {
       // User rejected
       console.log('User rejected network switch')
     } else {
       console.error('Network switch error:', switchError)
-      alert('Failed to switch network. Please switch manually in MetaMask.')
+      // Only alert for non-user-rejection errors
+      if (switchError.code !== 4001) {
+        alert('Failed to switch network. Please switch manually in MetaMask.')
+      }
     }
   }
 }
