@@ -216,41 +216,55 @@ interface StoredMessage {
 ### **Week 2: Client MVP** 🎨
 
 #### Day 1-2: Inbox UI
-- [ ] Create inbox page (`/apps/r3mail/pages/inbox.vue`)
-- [ ] Message list component
-- [ ] Message preview component
-- [ ] Unread badge
-- [ ] Loading states
-- [ ] Empty state
-- [ ] IndexedDB integration
-- [ ] Event listener setup
+- [x] Create inbox page (`/apps/r3mail/app/pages/inbox.vue`) *(Done!)*
+- [x] Message list component (`MessageListItem.vue`) *(Done!)*
+- [x] Message preview component *(Done!)*
+- [x] Unread badge *(Done!)*
+- [x] Loading states *(Done!)*
+- [x] Empty state *(Done!)*
+- [x] IndexedDB integration *(Done!)*
+- [x] Wallet connection UI *(Done!)*
+- [ ] Event listener integration
+- [ ] Real message fetching
 
-**Deliverable:** Working inbox view
+**Deliverable:** Working inbox view  
+**Status:** ✅ UI complete! Ready for integration
 
 #### Day 3-4: Compose UI
-- [ ] Create compose page (`/apps/r3mail/pages/compose.vue`)
-- [ ] Recipient address input
-- [ ] Subject input
-- [ ] Markdown editor integration
-- [ ] Preview mode
-- [ ] Send button + loading state
-- [ ] Error handling
-- [ ] Success feedback
+- [x] Create compose page (`/apps/r3mail/app/pages/compose.vue`) *(Done!)*
+- [x] Recipient address input *(Done!)*
+- [x] Subject input *(Done!)*
+- [x] Markdown editor *(Done!)*
+- [x] Preview mode *(Done!)*
+- [x] Send button + loading state *(Done!)*
+- [x] Error handling *(Done!)*
+- [x] Form validation *(Done!)*
+- [ ] Actual message sending integration
 
-**Deliverable:** Working compose view
+**Deliverable:** Working compose view  
+**Status:** ✅ UI complete! Ready for integration
 
-#### Day 5: Message View & Polish
-- [ ] Create message view page (`/apps/r3mail/pages/message/[id].vue`)
-- [ ] Markdown rendering
-- [ ] Sender info display
-- [ ] Timestamp formatting
-- [ ] Mark as read
-- [ ] Archive button
-- [ ] Reply button (future)
-- [ ] Responsive design
-- [ ] Dark mode support
+#### Day 5: Message View & Integration
+- [x] Create message view page (`/apps/r3mail/app/pages/message/[id].vue`) *(Done!)*
+- [x] Markdown rendering *(Done!)*
+- [x] Sender info display *(Done!)*
+- [x] Timestamp formatting *(Done!)*
+- [x] Mark as read *(Done!)*
+- [x] Archive button *(Done!)*
+- [x] Reply button *(Done!)*
+- [x] Message metadata display *(Done!)*
+- [x] Responsive design *(Done!)*
+- [x] Create wallet composable *(Done!)*
+- [x] Create messages composable *(Done!)*
+- [x] Integrate inbox page *(Done!)*
+- [x] Integrate compose page *(Done!)*
+- [x] Integrate message view *(Done!)*
+- [ ] IPFS integration
+- [ ] Envelope signing
+- [ ] Message decryption
 
-**Deliverable:** Complete UI flow
+**Deliverable:** Complete UI flow + Backend integration  
+**Status:** ✅ Integration complete! Ready for IPFS and testing
 
 ---
 
