@@ -1,5 +1,20 @@
 <script setup lang="ts">
+import { useR3mailWallet } from '~/composables/useR3mailWallet'
+
 const route = useRoute()
+const wallet = useR3mailWallet()
+
+// Copy address to clipboard
+async function copyAddress() {
+  if (!wallet.address.value) return
+  
+  try {
+    await navigator.clipboard.writeText(wallet.address.value)
+    console.log('Address copied to clipboard')
+  } catch (err) {
+    console.error('Failed to copy address:', err)
+  }
+}
 
 function setLinks() {
   if (route.fullPath === '/') {
@@ -52,7 +67,26 @@ watch(() => route.fullPath, (val) => {
       <Separator orientation="vertical" />
       <BaseBreadcrumbCustom :links="links" />
     </div>
-    <div class="ml-auto flex items-center gap-4">
+    <div class="ml-auto flex items-center gap-2">
+      <!-- Wallet Controls -->
+      <template v-if="!wallet.isConnected.value">
+        <Button @click="wallet.connect" size="sm">
+          <Icon name="lucide:wallet" class="mr-2 h-4 w-4" />
+          Connect Wallet
+        </Button>
+      </template>
+      <template v-else>
+        <Badge variant="outline" class="font-mono text-xs">
+          {{ wallet.address.value.slice(0, 6) }}...{{ wallet.address.value.slice(-4) }}
+        </Badge>
+        <Button @click="copyAddress" variant="ghost" size="icon" class="h-8 w-8">
+          <Icon name="lucide:copy" class="h-4 w-4" />
+        </Button>
+        <Button @click="wallet.disconnect" variant="ghost" size="icon" class="h-8 w-8">
+          <Icon name="lucide:log-out" class="h-4 w-4" />
+        </Button>
+      </template>
+      
       <slot />
     </div>
   </header>

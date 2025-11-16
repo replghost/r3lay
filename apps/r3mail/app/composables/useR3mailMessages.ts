@@ -24,6 +24,7 @@ export interface StoredMessage {
 const messages = ref<StoredMessage[]>([])
 const loading = ref(false)
 const error = ref('')
+const showAllMessages = ref(false) // Debug mode: show deleted/archived messages
 
 export function useR3mailMessages() {
   const wallet = useR3mailWallet()
@@ -303,9 +304,9 @@ export function useR3mailMessages() {
       // Create canonical JSON string (same as signing)
       const signedMessage = JSON.stringify(envelopeToVerify, Object.keys(envelopeToVerify).sort())
       
-      // Verify signature using ethers
-      const { ethers } = await import('ethers')
-      const recoveredAddress = ethers.utils.verifyMessage(signedMessage, signature)
+      // Verify signature using ethers v6
+      const { verifyMessage } = await import('ethers')
+      const recoveredAddress = verifyMessage(signedMessage, signature)
       
       if (recoveredAddress.toLowerCase() !== event.from.toLowerCase()) {
         throw new Error(`Invalid signature! Expected ${event.from}, got ${recoveredAddress}. Message may be forged or tampered.`)
@@ -392,7 +393,40 @@ export function useR3mailMessages() {
       return message
     } catch (err) {
       console.error('Failed to process message event:', err)
-      throw err
+      
+      const errorMessage = err instanceof Error ? err.message : String(err)
+      
+      // Don't cache certain errors - they should be retried
+      const shouldNotCache = 
+        errorMessage.includes('ethers') ||
+        errorMessage.includes('verifyMessage') ||
+        errorMessage.includes('Invalid signature') ||
+        errorMessage.includes('IPFS') ||
+        errorMessage.includes('fetch')
+      
+      if (shouldNotCache) {
+        console.log(`⚠️ Not caching message due to retriable error: ${errorMessage}`)
+        throw err
+      }
+      
+      // Store failed message for persistent errors (e.g., missing public key)
+      const failedMessage: StoredMessage = {
+        msgId: event.msgId,
+        from: event.from.toLowerCase(),
+        to: event.to.toLowerCase(),
+        subject: '(Failed to decrypt)',
+        body: `Error: ${errorMessage}`,
+        timestamp: Number(event.timestamp) * 1000,
+        blockNumber: Number(event.blockNumber),
+        unread: true,
+        archived: false,
+        envelopeCid: event.envelopeCid,
+      }
+      
+      await storeMessage(failedMessage)
+      console.log(`⚠️ Stored failed message: ${failedMessage.msgId}`)
+      
+      return failedMessage
     }
   }
 
@@ -542,6 +576,7 @@ export function useR3mailMessages() {
     messages,
     loading,
     error,
+    showAllMessages,
     
     // Methods
     sendMessage,

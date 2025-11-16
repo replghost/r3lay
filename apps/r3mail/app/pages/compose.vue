@@ -1,24 +1,28 @@
 <template>
-  <div class="compose-page">
-    <div class="max-w-4xl mx-auto">
-      <!-- Header -->
-      <div class="mb-6">
-        <div class="flex items-center gap-2 mb-2">
+  <div class="compose-page h-full flex flex-col">
+    <!-- Header -->
+    <div class="border-b px-6 py-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
           <NuxtLink to="/inbox">
             <Button variant="ghost" size="icon">
               <Icon name="lucide:arrow-left" class="h-5 w-5" />
             </Button>
           </NuxtLink>
-          <h1 class="text-3xl font-bold">New Message</h1>
+          <div>
+            <h1 class="text-2xl font-bold">New Message</h1>
+            <p class="text-sm text-muted-foreground mt-0.5">
+              Send an encrypted message
+            </p>
+          </div>
         </div>
-        <p class="text-muted-foreground">
-          Send an encrypted message to any Ethereum address
-        </p>
       </div>
+    </div>
 
-      <!-- Compose Form -->
-      <Card>
-        <CardContent class="pt-6">
+    <!-- Compose Form -->
+    <div class="flex-1 overflow-y-auto">
+      <div class="max-w-3xl mx-auto px-6 py-6">
+        <div class="space-y-6">
           <form @submit.prevent="sendMessage" class="space-y-6">
             <!-- To Address -->
             <div class="space-y-2">
@@ -126,22 +130,29 @@
               </Button>
             </div>
           </form>
-        </CardContent>
-      </Card>
 
-      <!-- Error -->
-      <Card v-if="error" class="mt-4 border-destructive">
-        <CardContent class="pt-6">
-          <div class="flex items-start gap-3">
-            <Icon name="lucide:alert-circle" class="h-5 w-5 text-destructive mt-0.5" />
-            <div>
-              <h4 class="font-semibold text-destructive">Error</h4>
-              <p class="text-sm text-muted-foreground mt-1">{{ error }}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          <!-- Error -->
+          <Card v-if="error" class="border-destructive">
+            <CardContent class="pt-6">
+              <div class="flex items-start gap-3">
+                <Icon name="lucide:alert-circle" class="h-5 w-5 text-destructive mt-0.5" />
+                <div>
+                  <h4 class="font-semibold text-destructive">Error</h4>
+                  <p class="text-sm text-muted-foreground mt-1">{{ error }}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
+
+    <!-- Send Progress Modal -->
+    <SendMessageModal 
+      v-model:open="showSendModal"
+      :step="sendStep"
+      :error="sendError"
+    />
   </div>
 </template>
 
@@ -167,6 +178,9 @@ const form = ref({
 const sending = ref(false)
 const error = ref('')
 const showPreview = ref(false)
+const showSendModal = ref(false)
+const sendStep = ref(0) // 0 = not started, 1 = signing, 2 = sending, 3 = complete
+const sendError = ref('')
 
 // Lifecycle
 onMounted(async () => {
@@ -206,19 +220,31 @@ async function sendMessage() {
   
   sending.value = true
   error.value = ''
+  sendError.value = ''
+  sendStep.value = 0
+  showSendModal.value = true
   
   try {
-    // Send message
+    // Step 1: Sign envelope (happens inside sendMessage)
+    sendStep.value = 1
+    
     await messageStore.sendMessage(
       form.value.to,
       form.value.subject,
       form.value.body
     )
     
-    // Navigate to inbox
-    router.push('/inbox')
+    // Step 3: Complete
+    sendStep.value = 3
+    
+    // Wait a moment to show success, then navigate
+    setTimeout(() => {
+      showSendModal.value = false
+      router.push('/inbox')
+    }, 1500)
   } catch (err: any) {
-    error.value = err.message || 'Failed to send message'
+    sendError.value = err.message || 'Failed to send message'
+    error.value = sendError.value
   } finally {
     sending.value = false
   }
@@ -226,12 +252,6 @@ async function sendMessage() {
 </script>
 
 <style scoped>
-.compose-page {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem;
-}
-
 /* Markdown preview styles */
 .prose {
   color: inherit;

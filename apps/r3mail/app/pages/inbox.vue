@@ -10,10 +10,6 @@
           </p>
         </div>
         <div class="flex gap-2">
-          <Button @click="registerKey" variant="outline" size="sm" v-if="wallet.isConnected.value && !isKeyRegistered" :disabled="registering">
-            <Icon name="lucide:key" class="mr-2 h-4 w-4" />
-            {{ registering ? 'Registering...' : 'Register Public Key' }}
-          </Button>
           <Button @click="refreshMessages" variant="outline" size="sm">
             <Icon name="lucide:refresh-cw" class="mr-2 h-4 w-4" :class="{ 'animate-spin': messageStore.loading.value }" />
             Refresh
@@ -124,27 +120,27 @@
         <div v-else class="flex-1 flex flex-col overflow-hidden">
           <!-- Message Header -->
           <div class="border-b px-6 py-4">
-            <h2 class="text-xl font-bold mb-2">{{ selectedMessage.subject || '(no subject)' }}</h2>
-            <div class="flex items-center gap-3 text-sm">
-              <div class="flex items-center gap-2">
-                <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Icon name="lucide:user" class="h-4 w-4 text-primary" />
-                </div>
-                <span class="font-mono text-xs">{{ selectedMessage.from }}</span>
+            <div class="flex items-start justify-between gap-4 mb-3">
+              <h2 class="text-xl font-bold flex-1">{{ selectedMessage.subject || '(no subject)' }}</h2>
+              <!-- Actions -->
+              <div class="flex gap-2">
+                <Button variant="ghost" size="sm" @click="handleArchive(selectedMessage.msgId)">
+                  <Icon name="lucide:archive" class="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" @click="handleDelete(selectedMessage.msgId)">
+                  <Icon name="lucide:trash-2" class="h-4 w-4" />
+                </Button>
               </div>
-              <span class="text-muted-foreground">•</span>
-              <span class="text-muted-foreground">{{ formatDate(selectedMessage.timestamp) }}</span>
             </div>
-            <!-- Actions -->
-            <div class="flex gap-2 mt-4">
-              <Button variant="outline" size="sm" @click="handleArchive(selectedMessage.msgId)">
-                <Icon name="lucide:archive" class="mr-2 h-4 w-4" />
-                Archive
-              </Button>
-              <Button variant="outline" size="sm" @click="handleDelete(selectedMessage.msgId)">
-                <Icon name="lucide:trash-2" class="mr-2 h-4 w-4" />
-                Delete
-              </Button>
+            <div class="flex items-center gap-3 text-sm text-muted-foreground">
+              <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Icon name="lucide:user" class="h-3 w-3 text-primary" />
+                </div>
+                <span class="font-mono text-xs">{{ truncateAddress(selectedMessage.from) }}</span>
+              </div>
+              <span>•</span>
+              <span class="text-xs">{{ formatDate(selectedMessage.timestamp) }}</span>
             </div>
           </div>
 
@@ -158,18 +154,11 @@
       </div>
     </div>
 
-    <!-- Error State -->
-    <Card v-if="messageStore.error.value || wallet.error.value" class="mt-4 border-destructive">
-      <CardContent class="pt-6">
-        <div class="flex items-start gap-3">
-          <Icon name="lucide:alert-circle" class="h-5 w-5 text-destructive mt-0.5" />
-          <div>
-            <h4 class="font-semibold text-destructive">Error</h4>
-            <p class="text-sm text-muted-foreground mt-1">{{ messageStore.error.value || wallet.error.value }}</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <!-- Onboarding Modal -->
+    <OnboardingModal 
+      v-model:open="showOnboarding" 
+      @registered="handleOnboardingComplete"
+    />
   </div>
 </template>
 
@@ -188,10 +177,18 @@ const messageStore = useR3mailMessages()
 const isKeyRegistered = ref(false)
 const registering = ref(false)
 const selectedMessage = ref<StoredMessage | null>(null)
+const showOnboarding = ref(false)
 
 // Computed
 const sortedMessages = computed(() => {
-  return [...messageStore.messages.value].sort((a, b) => b.timestamp - a.timestamp)
+  let filtered = messageStore.messages.value
+  
+  // Filter out deleted messages unless debug mode is on
+  if (!messageStore.showAllMessages.value) {
+    filtered = filtered.filter(m => !m.archived)
+  }
+  
+  return [...filtered].sort((a, b) => b.timestamp - a.timestamp)
 })
 
 const unreadCount = computed(() => {
@@ -239,6 +236,10 @@ watch(() => messageStore.messages.value, (newMessages) => {
 watch(() => wallet.isConnected.value, async (connected) => {
   if (connected && wallet.keys.value) {
     isKeyRegistered.value = await wallet.hasPublicKey()
+    // Show onboarding if key not registered
+    if (!isKeyRegistered.value) {
+      showOnboarding.value = true
+    }
   }
 })
 
@@ -254,6 +255,10 @@ onMounted(async () => {
     console.log('📬 Messages after load:', messageStore.messages.value.length)
     // Check if public key is registered
     isKeyRegistered.value = await wallet.hasPublicKey()
+    // Show onboarding if key not registered
+    if (!isKeyRegistered.value) {
+      showOnboarding.value = true
+    }
     // Start background sync (polls every 30 seconds)
     stopBackgroundSync = messageStore.startBackgroundSync()
   }
@@ -397,6 +402,11 @@ function getPreview(body: string): string {
     .trim()
   
   return plain.length > 100 ? plain.slice(0, 100) + '...' : plain
+}
+
+function handleOnboardingComplete() {
+  isKeyRegistered.value = true
+  showOnboarding.value = false
 }
 
 </script>
