@@ -152,6 +152,11 @@ export async function fetchFromIPFS(cid: string): Promise<any> {
         if (contentType?.includes('application/json')) {
           return await response.json()
         }
+        // For binary data (encrypted bodies), use arrayBuffer
+        if (contentType?.includes('application/octet-stream') || !contentType?.includes('text')) {
+          const buffer = await response.arrayBuffer()
+          return new Uint8Array(buffer)
+        }
         return await response.text()
       }
     } catch (error) {

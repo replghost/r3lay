@@ -247,17 +247,35 @@ export function useR3mailMessages() {
       console.log('Fetching body from:', envelope.bodyCid)
       const encryptedBodyData = await fetchFromIPFS(envelope.bodyCid)
       
+      console.log('📦 Body data type:', typeof encryptedBodyData)
+      console.log('📦 Body data instanceof Uint8Array:', encryptedBodyData instanceof Uint8Array)
+      if (typeof encryptedBodyData === 'string') {
+        console.log('📦 Body string length:', encryptedBodyData.length)
+        console.log('📦 Body string (first 100 chars):', encryptedBodyData.slice(0, 100))
+      }
+      
       // Convert to Uint8Array if needed
       let encryptedBody: Uint8Array
-      if (typeof encryptedBodyData === 'string') {
-        // IPFS returns base64-encoded data as string - decode it properly
-        const { ensureSodium } = await import('@r3mail/core')
-        const sodium = await ensureSodium()
-        encryptedBody = sodium.from_base64(encryptedBodyData)
-        console.log('📦 Decoded body from base64, length:', encryptedBody.length)
-      } else if (encryptedBodyData instanceof Uint8Array) {
+      if (encryptedBodyData instanceof Uint8Array) {
         encryptedBody = encryptedBodyData
         console.log('📦 Body already Uint8Array, length:', encryptedBody.length)
+      } else if (typeof encryptedBodyData === 'string') {
+        // IPFS might return base64 or raw binary string - try to detect
+        const { ensureSodium } = await import('@r3mail/core')
+        const sodium = await ensureSodium()
+        try {
+          encryptedBody = sodium.from_base64(encryptedBodyData)
+          console.log('📦 Decoded body from base64, length:', encryptedBody.length)
+        } catch (e) {
+          // Not base64, treat as raw binary string
+          console.log('📦 Not base64, treating as binary string')
+          const bytes = new Uint8Array(encryptedBodyData.length)
+          for (let i = 0; i < encryptedBodyData.length; i++) {
+            bytes[i] = encryptedBodyData.charCodeAt(i)
+          }
+          encryptedBody = bytes
+          console.log('📦 Converted binary string to Uint8Array, length:', encryptedBody.length)
+        }
       } else {
         throw new Error('Invalid encrypted body format')
       }
