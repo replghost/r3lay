@@ -1,0 +1,3 @@
+[submodule "contracts/r3mail-mailbox/lib/forge-std"]
+	path = contracts/r3mail-mailbox/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std

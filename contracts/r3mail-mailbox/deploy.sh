@@ -34,6 +34,7 @@ forge create \
     --rpc-url $RPC_URL \
     --private-key $PRIVATE_KEY \
     --legacy \
+    --broadcast \
     src/R3mailMailbox.sol:R3mailMailbox
 
 echo "✅ Deployment complete!"

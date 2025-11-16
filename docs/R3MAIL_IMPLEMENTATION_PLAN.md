@@ -165,29 +165,38 @@ interface StoredMessage {
 
 #### Day 1-2: Smart Contract
 - [x] Write R3mailMailbox.sol *(Done!)*
-- [ ] Write Foundry tests
-- [ ] Deploy to Paseo Asset Hub
+- [x] Write Foundry tests *(Done! 11 tests passing)*
+- [x] Deploy to Paseo Asset Hub *(Done!)*
+- [x] Generate ABI *(Done!)*
+- [x] Save contract address *(Done!)*
 - [ ] Verify on block explorer
-- [ ] Generate ABI
-- [ ] Save contract address
 
-**Deliverable:** Deployed contract + ABI
+**Deliverable:** Deployed contract + ABI  
+**Status:** ✅ COMPLETE! Contract deployed at `0xABE4bEea70cA1F2A4B9a5eACcB9972E096B5d769`
 
 #### Day 3-4: Core Package
-- [ ] Create `packages/r3mail-core` directory
-- [ ] Set up package.json
-- [ ] Implement `envelope.ts`
-  - createEnvelope()
+- [x] Create `packages/r3mail-core` directory *(Done!)*
+- [x] Set up package.json *(Done!)*
+- [x] Implement `envelope.ts` *(Done!)*
+  - canonicalEnvelopeJSON()
   - signEnvelope()
-  - verifyEnvelope()
-- [ ] Implement `message.ts`
-  - encryptMessage() (ECDH + XChaCha20)
+  - verifyEnvelopeSignature()
+  - validateEnvelope()
+  - parseEnvelope()
+  - serializeEnvelope()
+- [x] Implement `message.ts` *(Done!)*
+  - createEncryptedMessage() (ECDH + XChaCha20)
   - decryptMessage()
   - derivePublicKeyFromAddress()
+  - getUserKeys()
+- [x] Create types.ts *(Done!)*
+- [x] Create index.ts *(Done!)*
+- [x] Write README *(Done!)*
 - [ ] Write unit tests
-- [ ] Test with R3LAY crypto module
+- [ ] Install dependencies and test
 
-**Deliverable:** @r3mail/core package
+**Deliverable:** @r3mail/core package  
+**Status:** ✅ Core implementation complete! Ready for testing
 
 #### Day 5: Integration
 - [ ] Create `packages/r3mail-chain` wrapper
