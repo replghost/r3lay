@@ -1,0 +1,34 @@
+{
+  "name": "@r3mail/chain",
+  "version": "0.1.0",
+  "description": "R3MAIL blockchain integration - contract interaction and event subscription",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./config": "./src/config.ts",
+    "./client": "./src/client.ts"
+  },
+  "scripts": {
+    "test": "vitest",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@r3mail/core": "workspace:*",
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "vitest": "^1.0.4"
+  },
+  "keywords": [
+    "r3mail",
+    "blockchain",
+    "polkadot",
+    "evm",
+    "messaging"
+  ],
+  "author": "replghost",
+  "license": "MIT"
+}
