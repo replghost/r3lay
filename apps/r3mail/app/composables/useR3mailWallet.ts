@@ -293,10 +293,8 @@ Purpose: Encryption Key Generation (HKDF-SHA256)`
    * Disconnect wallet
    */
   function disconnect() {
-    // Clear localStorage
-    if (address.value) {
-      localStorage.removeItem(`r3mail_keys_${address.value}`)
-    }
+    // Don't clear keys from localStorage - they should persist
+    // Users can manually clear them if needed via browser storage
     
     isConnected.value = false
     address.value = ''

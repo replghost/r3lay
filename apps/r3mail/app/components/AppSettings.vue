@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { useR3mailMessages } from '~/composables/useR3mailMessages'
-
 const isDesktop = useMediaQuery('(min-width: 768px)')
 
 const isOpen = ref(false)
@@ -8,35 +6,9 @@ const showOnboarding = ref(false)
 
 const direction = useTextDirection()
 
-// Message store for debug settings
-const messageStore = useR3mailMessages()
-
-// Clear all messages from IndexedDB
-async function clearAllMessages() {
-  if (!confirm('Are you sure you want to delete all messages from IndexedDB? This cannot be undone.')) {
-    return
-  }
-  
-  try {
-    const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('r3mail', 1)
-      request.onsuccess = () => resolve(request.result)
-      request.onerror = () => reject(request.error)
-    })
-    
-    const transaction = db.transaction(['messages'], 'readwrite')
-    const store = transaction.objectStore('messages')
-    await store.clear()
-    
-    messageStore.messages.value = []
-    console.log('✅ All messages cleared from IndexedDB')
-  } catch (err) {
-    console.error('Failed to clear messages:', err)
-  }
-}
-
 // Error tracking
 const errors = ref<Array<{ timestamp: number; message: string; details?: string }>>([])
+const unreadErrorCount = ref(0)
 
 // Listen for global errors
 if (typeof window !== 'undefined') {
@@ -69,14 +41,21 @@ if (typeof window !== 'undefined') {
       
       // Keep only last 20 errors
       if (errors.value.length > 20) {
-        errors.value = errors.value.slice(0, 20)
+        errors.value.pop()
       }
       
-      // Auto-open debug sidebar on error
-      isOpen.value = true
+      // Increment unread counter
+      unreadErrorCount.value++
     }
   }
 }
+
+// Clear counter when sidebar opens
+watch(isOpen, (newValue) => {
+  if (newValue) {
+    unreadErrorCount.value = 0
+  }
+})
 
 function clearErrors() {
   errors.value = []
@@ -95,8 +74,18 @@ function formatTime(timestamp: number): string {
 <template>
   <Sheet v-if="isDesktop" v-model:open="isOpen">
     <SheetTrigger as-child>
-      <Button class="fixed bottom-6 right-6 z-50 rounded-full w-12 h-12 shadow-lg" size="icon">
-        <Icon name="i-lucide-bug" size="18" />
+      <Button
+        variant="outline"
+        size="icon"
+        class="fixed bottom-4 right-4 z-50 h-10 w-10 rounded-full shadow-lg relative"
+      >
+        <Icon name="lucide:bug" class="h-5 w-5" />
+        <span 
+          v-if="unreadErrorCount > 0"
+          class="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center font-semibold"
+        >
+          {{ unreadErrorCount > 9 ? '9+' : unreadErrorCount }}
+        </span>
       </Button>
     </SheetTrigger>
     <SheetContent :side="direction === 'rtl' ? 'left' : 'right'">
@@ -137,22 +126,7 @@ function formatTime(timestamp: number): string {
           </div>
         </ScrollArea>
 
-        <div class="px-6 py-4 border-t space-y-3">
-          <div class="flex items-center gap-2">
-            <input 
-              type="checkbox" 
-              id="showAllMessages"
-              v-model="messageStore.showAllMessages.value"
-              class="w-4 h-4 rounded border-gray-300"
-            />
-            <label for="showAllMessages" class="text-sm text-muted-foreground cursor-pointer">
-              Show all messages (including deleted)
-            </label>
-          </div>
-          <Button @click="clearAllMessages" variant="destructive" size="sm" class="w-full">
-            <Icon name="i-lucide-trash-2" class="mr-2 h-4 w-4" />
-            Clear All Messages
-          </Button>
+        <div class="px-6 py-4 border-t">
           <button 
             @click="showOnboarding = true" 
             class="text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -166,8 +140,14 @@ function formatTime(timestamp: number): string {
 
   <Drawer v-else v-model:open="isOpen">
     <DrawerTrigger as-child>
-      <Button class="fixed bottom-6 right-6 z-50 rounded-full w-12 h-12 shadow-lg" size="icon">
+      <Button class="fixed bottom-6 right-6 z-50 rounded-full w-12 h-12 shadow-lg relative" size="icon">
         <Icon name="i-lucide-bug" size="18" />
+        <span 
+          v-if="unreadErrorCount > 0"
+          class="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center font-semibold"
+        >
+          {{ unreadErrorCount > 9 ? '9+' : unreadErrorCount }}
+        </span>
       </Button>
     </DrawerTrigger>
     <DrawerContent class="max-h-[97%]">
@@ -206,22 +186,7 @@ function formatTime(timestamp: number): string {
           </div>
         </div>
 
-        <div class="px-4 py-3 border-t space-y-3">
-          <div class="flex items-center gap-2">
-            <input 
-              type="checkbox" 
-              id="showAllMessagesMobile"
-              v-model="messageStore.showAllMessages.value"
-              class="w-4 h-4 rounded border-gray-300"
-            />
-            <label for="showAllMessagesMobile" class="text-sm text-muted-foreground cursor-pointer">
-              Show all messages (including deleted)
-            </label>
-          </div>
-          <Button @click="clearAllMessages" variant="destructive" size="sm" class="w-full">
-            <Icon name="i-lucide-trash-2" class="mr-2 h-4 w-4" />
-            Clear All Messages
-          </Button>
+        <div class="px-4 py-3 border-t">
           <button 
             @click="showOnboarding = true" 
             class="text-sm text-muted-foreground hover:text-foreground transition-colors"
