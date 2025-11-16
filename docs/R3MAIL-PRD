@@ -1,0 +1,122 @@
+# R3MAIL MVP — Product Requirements Document (PRD)
+
+## 1. Overview
+R3MAIL is an encrypted, wallet-based, one-to-one messaging protocol built on Paseo Asset Hub using a lightweight on-chain mailbox contract for notification and off-chain storage for ciphertext. R3MAIL provides end-to-end encrypted email-like messaging with markdown support, instant delivery (via chain event subscription), and no centralized servers.
+
+This is the simplest, shippable version of the product.
+
+## 2. Goals (MVP)
+- Provide a secure, private, decentralized “encrypted email” experience.
+- Allow users to receive messages via **chain events**, not via polling IPFS.
+- Make markdown the default message body format.
+- Deliver messages immediately when user is online (smoldot / RPC event subscription).
+- Ensure sender authenticity using Substrate signatures.
+- Ensure message confidentiality using X25519 + XChaCha20-Poly1305.
+- Ensure message integrity via content hashes.
+- Keep inbox state fully local (read/unread, archive).
+
+## 3. Non-Goals (Not in MVP)
+- Group messaging.
+- Broadcast (“Substack mode”).
+- Reply threading or conversation view.
+- Key rotation UI.
+- Multi-device sync (beyond re-decrypting history).
+- HTML emails.
+- Push server (APNs/FCM relay).
+- Spam filtering / allowlists.
+- ENS or cross-chain key registry.
+
+## 4. User Personas
+
+### 4.1 Sender
+- Wants to send a private message to a recipient.
+- Uses wallet for identity.
+- Does not operate servers.
+
+### 4.2 Recipient
+- Wants a decentralized inbox.
+- Wants to know immediately when a message arrives.
+- Reads/decrypts on device.
+
+## 5. User Stories
+
+### 5.1 First-Time User
+- Connect wallet
+- Generate X25519 key pair
+- Approve binding signature
+- Scan chain for messages
+- Inbox populated
+
+### 5.2 Returning User
+- Load encryption key
+- Watch chain for new events
+- Fetch/decrypt
+
+### 5.3 Sending a Message
+- Enter SS58 + markdown
+- Encrypt + upload + notify
+
+## 6. System Architecture Summary
+
+### On-Chain (Mailbox Contract)
+- Only `notifyMessage` and event logging.
+
+### Off-Chain (Storage)
+- envelope.json, body.bin, optional attachments
+
+### Cryptography
+- Substrate signatures
+- X25519 key exchange
+- XChaCha20-Poly1305
+- SHA-256
+
+### Client
+- Local DB
+- Light client event subscription
+- Markdown renderer
+
+## 7. Envelope Format
+```json
+{
+  "v": 1,
+  "msg_id": "0x...",
+  "from_ss58": "5Fxxx",
+  "from_account_id32": "0x...",
+  "to_ss58": "5Gxxx",
+  "to_account_id32": "0x...",
+  "timestamp": 1731700000,
+  "cek_wrapped": "base64...",
+  "nonce": "base64...",
+  "ciphertext_sha256": "0x...",
+  "body_format": "markdown",
+  "body_cid": "bafy...",
+  "signature": "0x..."
+}
+```
+
+## 8. Message Lifecycle
+### Sending
+- Encrypt, upload, notify.
+
+### Receiving
+- Watch event, fetch, verify, decrypt, store.
+
+## 9. UX Requirements
+- Inbox list with previews
+- Message view
+- Compose with markdown
+
+## 10. Performance & Limits
+- Max message ~500 KB
+
+## 11. Security
+- E2E encryption
+- No private metadata on chain
+- Local key storage
+
+## 12. Open Questions
+- Key registry
+- Backups
+- Spam controls
+- HTML
+- Groups (R3LAY)
