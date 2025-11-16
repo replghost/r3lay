@@ -83,8 +83,17 @@ async function keccak256(data: string): Promise<string> {
  */
 async function encryptBody(plaintext: string, cek: Uint8Array, nonce: Uint8Array): Promise<Uint8Array> {
   const lib = await ensureSodium()
+  console.log('📝 encryptBody:')
+  console.log('  CEK (first 16):', Array.from(cek.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(''))
+  console.log('  Nonce (first 16):', Array.from(nonce.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(''))
+  console.log('  Plaintext length:', plaintext.length)
+  
   const plaintextBytes = new TextEncoder().encode(plaintext)
-  return lib.crypto_secretbox_easy(plaintextBytes, nonce, cek)
+  const encrypted = lib.crypto_secretbox_easy(plaintextBytes, nonce, cek)
+  
+  console.log('  Encrypted body (first 16):', Array.from(encrypted.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(''))
+  
+  return encrypted
 }
 
 /**
@@ -92,8 +101,17 @@ async function encryptBody(plaintext: string, cek: Uint8Array, nonce: Uint8Array
  */
 async function decryptBody(ciphertext: Uint8Array, cek: Uint8Array, nonce: Uint8Array): Promise<string> {
   const lib = await ensureSodium()
+  console.log('📖 decryptBody:')
+  console.log('  CEK (first 16):', Array.from(cek.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(''))
+  console.log('  Nonce (first 16):', Array.from(nonce.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(''))
+  console.log('  Ciphertext (first 16):', Array.from(ciphertext.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(''))
+  
   const plaintextBytes = lib.crypto_secretbox_open_easy(ciphertext, nonce, cek)
-  return new TextDecoder().decode(plaintextBytes)
+  const decrypted = new TextDecoder().decode(plaintextBytes)
+  
+  console.log('  Decrypted length:', decrypted.length)
+  
+  return decrypted
 }
 
 /**
@@ -115,8 +133,17 @@ async function wrapCEK(
   // Compute ECDH shared secret using crypto_box_beforenm (same as unwrap)
   const sharedSecret = lib.crypto_box_beforenm(recipientPublicKey, senderPrivateKey)
   
+  console.log('🔐 wrapCEK:')
+  console.log('  Recipient public key (first 16):', Array.from(recipientPublicKey.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(''))
+  console.log('  Sender private key (first 16):', Array.from(senderPrivateKey.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(''))
+  console.log('  Shared secret (first 16):', Array.from(sharedSecret.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(''))
+  console.log('  CEK (first 16):', Array.from(cek.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(''))
+  console.log('  Nonce (first 16):', Array.from(nonce.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(''))
+  
   // Encrypt CEK with shared secret
   const wrappedCEK = lib.crypto_secretbox_easy(cek, nonce, sharedSecret)
+  
+  console.log('  Wrapped CEK (first 16):', Array.from(wrappedCEK.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(''))
   
   return lib.to_base64(wrappedCEK)
 }
@@ -140,8 +167,19 @@ async function unwrapCEK(
   // Compute ECDH shared secret
   const sharedSecret = lib.crypto_box_beforenm(senderPublicKey, recipientPrivateKey)
   
+  console.log('🔓 unwrapCEK:')
+  console.log('  Sender public key (first 16):', Array.from(senderPublicKey.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(''))
+  console.log('  Recipient private key (first 16):', Array.from(recipientPrivateKey.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(''))
+  console.log('  Shared secret (first 16):', Array.from(sharedSecret.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(''))
+  console.log('  Wrapped CEK (first 16):', Array.from(wrappedCEK.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(''))
+  console.log('  Nonce (first 16):', Array.from(nonce.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(''))
+  
   // Decrypt CEK
-  return lib.crypto_secretbox_open_easy(wrappedCEK, nonce, sharedSecret)
+  const unwrapped = lib.crypto_secretbox_open_easy(wrappedCEK, nonce, sharedSecret)
+  
+  console.log('  Unwrapped CEK (first 16):', Array.from(unwrapped.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(''))
+  
+  return unwrapped
 }
 
 /**

@@ -250,21 +250,38 @@ export function useR3mailMessages() {
       // Convert to Uint8Array if needed
       let encryptedBody: Uint8Array
       if (typeof encryptedBodyData === 'string') {
-        // If it's a string, convert from base64 or hex
-        const bytes = new TextEncoder().encode(encryptedBodyData)
-        encryptedBody = bytes
+        // IPFS returns base64-encoded data as string - decode it properly
+        const { ensureSodium } = await import('@r3mail/core')
+        const sodium = await ensureSodium()
+        encryptedBody = sodium.from_base64(encryptedBodyData)
+        console.log('📦 Decoded body from base64, length:', encryptedBody.length)
       } else if (encryptedBodyData instanceof Uint8Array) {
         encryptedBody = encryptedBodyData
+        console.log('📦 Body already Uint8Array, length:', encryptedBody.length)
       } else {
         throw new Error('Invalid encrypted body format')
       }
       
-      // 3. Decrypt message
+      // 3. Get sender's public key from registry
+      console.log('Fetching sender public key from registry...')
+      const senderPublicKey = await wallet.chainClient.value!.getPublicKey(event.from as `0x${string}`)
+      
+      if (!senderPublicKey) {
+        throw new Error(`Sender ${event.from} has not registered their public key`)
+      }
+      
+      console.log('🔑 DECRYPTION KEYS:')
+      console.log('  Sender public key (first 16):', Array.from(senderPublicKey.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(''))
+      console.log('  Recipient private key (first 16):', Array.from(wallet.keys.value.privateKey.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(''))
+      console.log('  Recipient public key (first 16):', Array.from(wallet.keys.value.publicKey.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(''))
+      
+      // 4. Decrypt message
       console.log('Decrypting message...')
       const decrypted = await decryptMessage({
         envelope,
         encryptedBody,
-        recipientPrivateKey: wallet.keys.value.privateKey
+        recipientPrivateKey: wallet.keys.value.privateKey,
+        senderPublicKey
       })
       
       // 4. Store in IndexedDB
