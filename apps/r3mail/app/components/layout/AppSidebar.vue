@@ -19,7 +19,7 @@ const { sidebar } = useAppSettings()
         <div class="flex items-center gap-2">
           <Icon name="i-lucide-mail" class="h-6 w-6" />
           <div class="flex flex-col gap-0.5">
-            <span class="font-bold text-lg leading-tight">R3MAIL</span>
+            <span class="font-bold text-lg leading-tight">3MAIL</span>
             <span class="text-xs text-muted-foreground">Encrypted Unstoppable Mail</span>
           </div>
         </div>

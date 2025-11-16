@@ -33,8 +33,8 @@ export async function addMockMessages(userAddress: string) {
       msgId: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
       from: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1',
       to: userAddress,
-      subject: 'Welcome to R3MAIL! 🎉',
-      body: `# Welcome to R3MAIL!
+      subject: 'Welcome to 3MAIL! 🎉',
+      body: `# Welcome to 3MAIL!
 
 This is your first encrypted message on the blockchain.
 

@@ -221,10 +221,10 @@ export function useR3mailWallet() {
 
     try {
       // Request signature from wallet for key derivation
-      const message = `R3MAIL Key Derivation v2
+      const message = `3MAIL Key Derivation v2
 
 This signature will be used to derive your encryption keys using HKDF.
-It will NOT give R3MAIL access to your wallet or funds.
+It will NOT give 3MAIL access to your wallet or funds.
 
 Address: ${address.value.toLowerCase()}
 Version: 2

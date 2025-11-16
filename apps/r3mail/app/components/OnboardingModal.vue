@@ -2,7 +2,7 @@
   <Dialog :open="open" @update:open="$emit('update:open', $event)">
     <DialogContent class="sm:max-w-[500px]">
       <DialogHeader>
-        <DialogTitle class="text-2xl">Welcome to R3MAIL! 🎉</DialogTitle>
+        <DialogTitle class="text-2xl">Welcome to 3MAIL! 🎉</DialogTitle>
         <DialogDescription>
           Let's get you set up with encrypted messaging in just one step.
         </DialogDescription>
