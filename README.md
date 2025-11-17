@@ -209,14 +209,3 @@ GPL3
 **Status:** MVP Development  
 **Version:** 0.1.0-alpha  
 **Last Updated:** 2025-11-15
-
-
----
-
-Other Info:
-
-Setup: Go to /apps/r3mail and run bun install, then bun run dev
-Demo URL: https://mail.r3lay.org
-Pitch Video: https://youtu.be/zz799onLrWY
-Team Members: replghost
-Pitch Deck: https://docs.google.com/presentation/d/1bveEqep6D6TOY0T0HVIJVMo_wOfIlNBxysvahsMi1Ds/edit?usp=sharing
