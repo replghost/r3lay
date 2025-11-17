@@ -99,6 +99,14 @@ bun run dev
 
 Open http://localhost:3000 and connect your wallet to start sending encrypted messages!
 
+### Network & Testnet Tokens
+
+3MAIL runs on **Passet Hub**.
+
+To get testnet PAS tokens:
+- Visit https://faucet.polkadot.io/?parachain=1111
+- In the dropdown, select **"Passet Hub: Smart Contracts"** and follow the instructions.
+
 ### Run R3LAY App (In Development)
 
 ```bash

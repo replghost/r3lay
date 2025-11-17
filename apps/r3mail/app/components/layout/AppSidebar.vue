@@ -37,6 +37,17 @@ const { sidebar } = useAppSettings()
       </SidebarGroup>
     </SidebarContent>
     <SidebarFooter>
+      <div class="w-full px-3 pb-3 text-[10px] text-muted-foreground space-y-1">
+        <div>Runs on <span class="font-medium">Passet Hub Testnet</span></div>
+        <a
+          href="https://faucet.polkadot.io/?parachain=1111"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-1 text-[10px] underline-offset-2 hover:underline"
+        >
+          Get testnet PAS ("Passet Hub: Smart Contracts")
+        </a>
+      </div>
       <LayoutSidebarNavFooter />
     </SidebarFooter>
     <SidebarRail />
