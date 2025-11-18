@@ -108,6 +108,31 @@ export function useR3mailMessages() {
       console.log('Message sent! Transaction:', txHash)
       console.log('Envelope CID sent to chain:', envelopeCid)
 
+      // Store a local copy in Outbox (sent messages)
+      const now = Date.now()
+      const fromAddress = wallet.address.value.toLowerCase()
+      const toAddress = to.toLowerCase()
+
+      const sentMessage: StoredMessage = {
+        msgId: envelope.msgId,
+        from: fromAddress,
+        to: toAddress,
+        subject,
+        body,
+        timestamp: now,
+        blockNumber: 0,
+        unread: false,
+        archived: false,
+        envelopeCid,
+      }
+
+      try {
+        await storeMessage(sentMessage)
+        console.log('💾 Stored sent message locally in Outbox:', sentMessage.msgId)
+      } catch (storeErr) {
+        console.error('Failed to store sent message locally:', storeErr)
+      }
+
       return {
         msgId: envelope.msgId,
         envelopeCid,
@@ -136,26 +161,53 @@ export function useR3mailMessages() {
       const db = await openDB()
       const transaction = db.transaction(['messages'], 'readonly')
       const store = transaction.objectStore('messages')
-      const index = store.index('to')
+      const toIndex = store.index('to')
+      const fromIndex = store.index('from')
       
       return new Promise<StoredMessage[]>((resolve, reject) => {
-        // Normalize address to lowercase for querying
         const normalizedAddress = wallet.address.value.toLowerCase()
-        const request = index.getAll(normalizedAddress)
-        
-        request.onsuccess = () => {
-          messages.value = request.result || []
-          console.log(`📬 Loaded ${messages.value.length} messages from IndexedDB for ${normalizedAddress}`)
+        const collected: StoredMessage[] = []
+        let pending = 2
+        let failed = false
+
+        function done() {
+          if (--pending > 0 || failed) return
+
+          // Merge and dedupe by msgId
+          const byId = new Map<string, StoredMessage>()
+          for (const msg of collected) {
+            byId.set(msg.msgId, msg)
+          }
+
+          messages.value = Array.from(byId.values())
+          console.log(`📬 Loaded ${messages.value.length} messages (inbox + outbox) for ${normalizedAddress}`)
           messages.value.forEach((m, i) => {
-            console.log(`${i}: ${m.subject || '⚠️ Failed to load'} (from: ${m.from.slice(0, 10)}...)`)
+            console.log(`${i}: ${m.subject || '⚠️ Failed to load'} (from: ${m.from.slice(0, 10)}..., to: ${m.to.slice(0, 10)}...)`)
           })
+
           resolve(messages.value)
         }
-        
-        request.onerror = () => {
+
+        function handleError(request: IDBRequest) {
+          if (failed) return
+          failed = true
           error.value = 'Failed to load messages'
           reject(request.error)
         }
+
+        const toRequest = toIndex.getAll(normalizedAddress)
+        toRequest.onsuccess = () => {
+          if (toRequest.result) collected.push(...toRequest.result)
+          done()
+        }
+        toRequest.onerror = () => handleError(toRequest)
+
+        const fromRequest = fromIndex.getAll(normalizedAddress)
+        fromRequest.onsuccess = () => {
+          if (fromRequest.result) collected.push(...fromRequest.result)
+          done()
+        }
+        fromRequest.onerror = () => handleError(fromRequest)
       })
     } catch (err: any) {
       error.value = err.message || 'Failed to load messages'
