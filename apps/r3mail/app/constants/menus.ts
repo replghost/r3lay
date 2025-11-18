@@ -24,6 +24,11 @@ export const navMenu: NavMenu[] = [
         icon: 'i-lucide-send',
         link: '/outbox',
       },
+      {
+        title: 'Archived',
+        icon: 'i-lucide-archive',
+        link: '/archived',
+      },
     ],
   },
 ]
